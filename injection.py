@@ -1,10 +1,7 @@
 import bilby
 import numpy as np
-import matplotlib.pyplot as plt
 from gwpy.timeseries import TimeSeries
-from gwpy.signal.filter_design import bandpass, concatenate_zpks, notch
-from gwpy.signal import filter_design
-from gwpy.plot import Plot
+import os
 
 #Universal parameters
 sampling_frequency = 16384
@@ -47,8 +44,8 @@ waveform_generators_all = []
 
 for i in range(int(number_injections)):
 
-    mass_2_gen = np.random.randint(5,50)
-    mass_1_gen = np.random.randint(mass_2_gen,50)
+    mass_1_gen = np.random.randint(5,50)
+    mass_2_gen = np.random.randint(5,mass_1_gen)
 
     injection_parameters_single = dict(
         mass_1=mass_1_gen, 
@@ -125,8 +122,11 @@ for i in range(int(number_injections)):
 
 assert len(injections) == int(number_injections)
 
+path = './injections'
+os.mkdir(path)
+
 for i in range(int(number_injections)):
-    injections[i].write('injections.txt')
+    injections[i].write('injections/injection{0}-{1}.txt'.format(i+1, merger_times[i]))
 
 print('Generated {0} injections successfully'.format(len(injections)))
 
