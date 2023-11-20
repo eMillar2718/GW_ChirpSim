@@ -10,9 +10,10 @@ sampling_frequency = 16384
 duration = 30
 minimum_frequency = 10
 
-print('Enter number of injections to generate')
+output_path = './injections'
+number_injections = input('Enter number of injections to generate: ')
 
-number_injections = input()
+
 
 #Generate a random merger time in O1
 ## Reading in JSON file containing data info from O1
@@ -29,6 +30,9 @@ for i in range(int(number_injections)):
     gps_start = O1_segment_data[random.randint(0,len(O1_segment_data))]["GPSstart"] #Picking a random entry and reading the corresponding GPS start time
     merger = gps_start + random.randint(0,4096-duration) #Picking a random point in the 4096s segment, leaving room for the trail-off
     merger_times.append(merger)
+
+#change to if time doesn't exist, try another time
+#Easier to call any time from all observing runs
 
 print('merger times:{}'.format(merger_times))
 
@@ -132,12 +136,27 @@ for i in range(int(number_injections)):
 
 assert len(injections) == int(number_injections)
 
-path = './injections'
-if not os.path.exists(path):
-    os.mkdir(path)
+answer = ""
+
+while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
+    print('Use default output path? "{0}"'.format(output_path))
+    answer = input("y/n")
+
+    if answer == "Yes" or answer == "yes" or answer == "Y" or answer == "y":
+
+        if not os.path.exists(output_path):
+            os.mkdir(output_path)
+
+    else:
+
+        print('Please specify output path')
+        output_path = input()
+
+        if not os.path.exists(output_path):
+            os.mkdir(output_path)
 
 for i in range(int(number_injections)):
-    injections[i].write('injections/injection{0}-{1}.txt'.format(i+1, merger_times[i]))
+    injections[i].write(output_path + '/injection{0}-{1}.txt'.format(i+1, merger_times[i]))
 
 print('Generated {0} injections successfully'.format(len(injections)))
 
