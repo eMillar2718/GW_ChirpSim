@@ -7,7 +7,7 @@ import random
 from gravityspy.plot.plot import plot_qtransform
 
 #Universal parameters
-sampling_frequency = 4096 #16384
+sampling_frequency = 16384
 duration = 30
 minimum_frequency = 10
 
@@ -203,7 +203,7 @@ for i in range(int(number_injections)):
     ind_figs_all["injection {0}".format(i+1)] = ind_fig_all
     superfigs.append(superfig)
 
-
+answer = ""
 while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
     print('Use default output path for plots? "{0}"'.format(output_path_plots))
     answer = input("[y/n] ")
@@ -225,4 +225,4 @@ for i in range(int(number_injections)):
 
     for j in range(len(durations)):
 
-        ind_figs_all[["injection {0}".format(i+1)]][j].savefig(output_path_plots + '/qscan-{0}-{1}.jpg'.format(merger_times[i], durations[j]))
+        ind_figs_all["injection {0}".format(i+1)][j].savefig(output_path_plots + '/qscan{0}-{1}-{2}s.jpg'.format(merger_times[i], durations[j]))
