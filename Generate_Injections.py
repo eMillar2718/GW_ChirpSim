@@ -13,40 +13,54 @@ minimum_frequency = 10
 output_path = './injections'
 number_injections = input('Enter number of injections to generate: ')
 
+#Specifying GPS time ranges for each observing run
+O1_range = [1126051217, 1137254417]
+O2_range = [1164556817, 1187733618]
+O3a_range = [1238166018, 1253977218]
+O3b_range = [1256655618, 1269363618]
 
-
-#Generate a random merger time in O1
-## Reading in JSON file containing data info from O1
-with open('GWOSC Data/O1_16KHz.json') as user_file:
-  O1_16Khz_all = user_file.read()
-
-O1_16Kz_parsed = json.loads(O1_16Khz_all) #Parsing the json to a dictionary
-
-O1_segment_data = O1_16Kz_parsed["strain"] #A dictionary containg only information from each 4096s data segments
+#Creating a list of each observing run ranges
+Obs_runs = [O1_range, O2_range, O3a_range, O3b_range]
 
 merger_times = []
-for i in range(int(number_injections)):
-    # safe example for testing = 1132283095
-    gps_start = O1_segment_data[random.randint(0,len(O1_segment_data))]["GPSstart"] #Picking a random entry and reading the corresponding GPS start time
-    merger = gps_start + random.randint(0,4096-duration) #Picking a random point in the 4096s segment, leaving room for the trail-off
-    merger_times.append(merger)
-
-#change to if time doesn't exist, try another time
-#Easier to call any time from all observing runs
-
-print('merger times:{}'.format(merger_times))
-
-#Setting the beginning and end of each strain
-
 start_times = []
 end_times = []
-for i in range(int(number_injections)):
-    start = merger_times[i] - (duration/2)
-    start_times.append(start)
+time_series_all = []
 
+for i in range(int(number_injections)):
+
+    #Randomly select an observing run
+    run_select = Obs_runs[random.randint(0,len(Obs_runs)-1)]
+
+    #Randomly select a start time within that observing run, leaving room at the end for signal trail-off
+    #Specify start times, end times, merger times
+
+    merger = random.randint(run_select[0], run_select[1]-duration)
+    merger_times.append(merger)
+
+    start = merger - duration/2
     end = start + duration
+
+    start_times.append(start)
     end_times.append(end)
 
+    for attempt in range(10): #Try generated GPS time 10 times
+    
+        try: #Attempt to locate GWOSC dataset 
+            time_series = TimeSeries.fetch_open_data('H1', start_time, end_time, sample_rate = sampling_frequency, verbose = True)
+        
+        except: 
+            print('Could not find dataset, retrying')
+
+        else: #if successful, break
+            break
+
+    else: #for-else: if the loop doesn't break (no successful dataset), print error message stating number of tries
+        print('Could not locate dataset after {0} tries'.format(attempt+1))
+
+    time_series_all.append(time_series)
+
+print('merger times:{}'.format(merger_times))
 print('Signal start times:{}'.format(start_times))
 print('Signal end times:{}'.format(end_times))
 
@@ -114,14 +128,6 @@ for i in range(int(number_injections)):
     )
 
     waveform_generators_all.append(waveform_generator_single)
-
-time_series_all = []
-
-for i in range(int(number_injections)):
-
-    time_series = TimeSeries.fetch_open_data('H1', start_times[i], end_times[i], sample_rate = sampling_frequency, verbose = True)
-
-    time_series_all.append(time_series)
 
 injections = []
 metadata = []
