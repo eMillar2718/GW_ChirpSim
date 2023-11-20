@@ -2,7 +2,6 @@ import bilby
 import numpy as np
 from gwpy.timeseries import TimeSeries
 import os
-import json
 import random
 
 #Universal parameters
@@ -10,7 +9,8 @@ sampling_frequency = 16384
 duration = 30
 minimum_frequency = 10
 
-output_path = './injections'
+output_path_injections = './injections' #default output path for injections
+output_path_plots_ = './plots' #default output path for plots (q-scans)
 number_injections = input('Enter number of injections to generate: ')
 
 #Specifying GPS time ranges for each observing run
@@ -19,7 +19,6 @@ O2_range = [1164556817, 1187733618]
 O3a_range = [1238166018, 1253977218]
 O3b_range = [1256655618, 1269363618]
 
-#Creating a list of each observing run ranges
 Obs_runs = [O1_range, O2_range, O3a_range, O3b_range]
 
 merger_times = []
@@ -165,10 +164,3 @@ for i in range(int(number_injections)):
     injections[i].write(output_path + '/injection{0}-{1}.txt'.format(i+1, merger_times[i]))
 
 print('Generated {0} injections successfully'.format(len(injections)))
-
-
-
-##improvements
-
-#Randomise GPS times by identifying data gaps 
-#Allow user to specify detector, sampling rate, etc from the inputs (perhaps a pop up window with a GUI?)
