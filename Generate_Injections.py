@@ -4,13 +4,16 @@ from gwpy.timeseries import TimeSeries
 import os
 import random
 
+from gravityspy.plot.plot import plot_qtransform
+
 #Universal parameters
-sampling_frequency = 16384
+sampling_frequency = 4096 #16384
 duration = 30
 minimum_frequency = 10
 
 output_path_injections = './injections' #default output path for injections
-output_path_plots_ = './plots' #default output path for plots (q-scans)
+output_path_plots = './plots' #default output path for plots (q-scans)
+
 number_injections = input('Enter number of injections to generate: ')
 
 #Specifying GPS time ranges for each observing run
@@ -28,35 +31,48 @@ time_series_all = []
 
 for i in range(int(number_injections)):
 
-    #Randomly select an observing run
-    run_select = Obs_runs[random.randint(0,len(Obs_runs)-1)]
-
-    #Randomly select a start time within that observing run, leaving room at the end for signal trail-off
-    #Specify start times, end times, merger times
-
-    merger = random.randint(run_select[0], run_select[1]-duration)
-    merger_times.append(merger)
-
-    start = merger - duration/2
-    end = start + duration
-
-    start_times.append(start)
-    end_times.append(end)
-
     for attempt in range(10): #Try generated GPS time 10 times
-    
+
+        #Randomly select an observing run
+        run_select = Obs_runs[random.randint(0,len(Obs_runs)-1)]
+
+        print('Run Selection = {}'.format(run_select))
+
+        #Randomly select a start time within that observing run, leaving room at the end for signal trail-off
+        #Specify start times, end times, merger times
+
+        merger = random.randint(run_select[0], run_select[1]-duration)
+        start = merger - duration/2
+        end = start + duration
+
+        print(start, end)
+
         try: #Attempt to locate GWOSC dataset 
-            time_series = TimeSeries.fetch_open_data('H1', start_time, end_time, sample_rate = sampling_frequency, verbose = True)
+            time_series = TimeSeries.fetch_open_data('H1', start, end, sample_rate = sampling_frequency, verbose = True)
         
         except: 
             print('Could not find dataset, retrying')
 
         else: #if successful, break
+            merger_times.append(merger)
+            start_times.append(start)
+            end_times.append(end)
             break
 
     else: #for-else: if the loop doesn't break (no successful dataset), print error message stating number of tries
-        print('Could not locate dataset after {0} tries'.format(attempt+1))
+       
+        start = 1126259467
+        start_times.append(start)
+        
+        end = 1126259497
+        end_times.append(end)
+        
+        merger = start + duration/2
+        merger_times.append(merger)
 
+        print('Could not locate dataset after {0} tries, attempting test times'.format(attempt+1))
+        time_series = TimeSeries.fetch_open_data('H1', start, end, sample_rate = sampling_frequency, verbose = True) #known working value
+        
     time_series_all.append(time_series)
 
 print('merger times:{}'.format(merger_times))
@@ -94,18 +110,12 @@ for i in range(int(number_injections)):
     
     injection_parameters_all.append(injection_parameters_single)
 
-for i in range(int(number_injections)):
-
     #Printing masses for debugging 
 
-    injection = injection_parameters_all[i]
-
-    mass1 = injection["mass_1"]
-    mass2 = injection["mass_2"]
+    mass1 = injection_parameters_single["mass_1"]
+    mass2 = injection_parameters_single["mass_2"]
 
     print('Signal {0} Masses: M1 = {1}, M2 = {2}'.format(i+1,mass1,mass2))
-
-for i in range(int(number_injections)):
 
     #Setting up waveform generator
 
@@ -129,7 +139,7 @@ for i in range(int(number_injections)):
     waveform_generators_all.append(waveform_generator_single)
 
 injections = []
-metadata = []
+metadatas = []
 
 for i in range(int(number_injections)):
 
@@ -138,19 +148,20 @@ for i in range(int(number_injections)):
     )
 
     injections.append(data_injected)
+    metadatas.append(metadata)
 
 assert len(injections) == int(number_injections)
 
 answer = ""
 
 while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
-    print('Use default output path? "{0}"'.format(output_path))
-    answer = input("y/n")
+    print('Use default output path for injections? "{0}"'.format(output_path_injections))
+    answer = input("[y/n]: ")
 
     if answer == "Yes" or answer == "yes" or answer == "Y" or answer == "y":
 
-        if not os.path.exists(output_path):
-            os.mkdir(output_path)
+        if not os.path.exists(output_path_injections):
+            os.mkdir(output_path_injections)
 
     else:
 
@@ -161,6 +172,57 @@ while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
             os.mkdir(output_path)
 
 for i in range(int(number_injections)):
-    injections[i].write(output_path + '/injection{0}-{1}.txt'.format(i+1, merger_times[i]))
+    injections[i].write(output_path_injections + '/injection{0}-{1}.txt'.format(i+1, merger_times[i]))
 
 print('Generated {0} injections successfully'.format(len(injections)))
+
+print('Generating Q-Scans...')
+
+durations = [0.5, 1, 2, 4]
+plot_normalized_energy_range = (0,25)
+plot_time_ranges = durations
+detector_name = 'H1'
+
+qspecgrams = {}
+ind_figs_all = {}
+superfigs = []
+
+for i in range(int(number_injections)):
+    
+    qspecgram_durations = []
+    for j in range(len(durations)):
+        
+        qspecgram = injections[i].q_transform(frange = [10,2048], outseg=(merger_times[i] - durations[j]/2, merger_times[i] + durations[j]/2),tres=0.002, fres = 0.5, whiten=True, qrange = [4,64], gps = merger_times[i])
+
+        qspecgram_durations.append(qspecgram)
+        
+    qspecgrams["injection {0}".format(i+1)] = qspecgram_durations
+
+    ind_fig_all, superfig = plot_qtransform(qspecgrams["injection {}".format(i+1)], plot_normalized_energy_range, plot_time_ranges, detector_name, start_times[i])
+
+    ind_figs_all["injection {0}".format(i+1)] = ind_fig_all
+    superfigs.append(superfig)
+
+
+while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
+    print('Use default output path for plots? "{0}"'.format(output_path_plots))
+    answer = input("[y/n] ")
+
+    if answer == "Yes" or answer == "yes" or answer == "Y" or answer == "y":
+
+        if not os.path.exists(output_path_plots):
+            os.mkdir(output_path_plots)
+
+    else:
+
+        print('Please specify output path')
+        output_path = input()
+
+        if not os.path.exists(output_path):
+            os.mkdir(output_path)
+
+for i in range(int(number_injections)):
+
+    for j in range(len(durations)):
+
+        ind_figs_all[["injection {0}".format(i+1)]][j].savefig(output_path_plots + '/qscan-{0}-{1}.jpg'.format(merger_times[i], durations[j]))
