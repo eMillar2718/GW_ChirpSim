@@ -152,7 +152,7 @@ for i in range(int(number_injections)):
 
 assert len(injections) == int(number_injections)
 
-answer = ""
+answer = "x"
 
 while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
     print('Use default output path for injections? "{0}"'.format(output_path_injections))
@@ -203,7 +203,7 @@ for i in range(int(number_injections)):
     ind_figs_all["injection {0}".format(i+1)] = ind_fig_all
     superfigs.append(superfig)
 
-answer = ""
+answer = "x"
 while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
     print('Use default output path for plots? "{0}"'.format(output_path_plots))
     answer = input("[y/n] ")
@@ -225,4 +225,6 @@ for i in range(int(number_injections)):
 
     for j in range(len(durations)):
 
-        ind_figs_all["injection {0}".format(i+1)][j].savefig(output_path_plots + '/qscan{0}-{1}-{2}s.jpg'.format(merger_times[i], durations[j]))
+        ind_figs_all["injection {0}".format(i+1)][j].savefig(output_path_plots + '/qscan{0}-{1}-{2}s.jpg'.format(i+1, merger_times[i], durations[j]))
+
+print('Q-scans generated successfully')
