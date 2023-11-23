@@ -150,9 +150,11 @@ for i in range(int(number_injections)):
     injections.append(data_injected)
     metadatas.append(metadata)
 
-assert len(injections) == int(number_injections)
+assert len(injections) == int(number_injections) #Ensure that we have the correct number of injections
 
 answer = "x"
+
+#Setting path specification, chose default or custom path
 
 while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
     print('Use default output path for injections? "{0}"'.format(output_path_injections))
@@ -191,6 +193,8 @@ for i in range(int(number_injections)):
     
     qspecgram_durations = []
     for j in range(len(durations)):
+
+        print(type(injections[i]))
         
         qspecgram = injections[i].q_transform(frange = [10,2048], outseg=(merger_times[i] - durations[j]/2, merger_times[i] + durations[j]/2),tres=0.002, fres = 0.5, whiten=True, qrange = [4,64], gps = merger_times[i])
 
