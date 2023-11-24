@@ -8,7 +8,7 @@ from gravityspy.plot.plot import plot_qtransform
 
 #Universal parameters
 sampling_frequency = 16384
-duration = 30
+duration = 128 #Required duration for Omicron
 minimum_frequency = 10
 
 output_path_injections = './injections' #default output path for injections
@@ -21,6 +21,7 @@ O1_range = [1126051217, 1137254417]
 O2_range = [1164556817, 1187733618]
 O3a_range = [1238166018, 1253977218]
 O3b_range = [1256655618, 1269363618]
+#O4a
 
 Obs_runs = [O1_range, O2_range, O3a_range, O3b_range]
 
@@ -174,9 +175,16 @@ while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
             os.mkdir(output_path)
 
 for i in range(int(number_injections)):
-    injections[i].write(output_path_injections + '/injection{0}-{1}.txt'.format(i+1, merger_times[i]))
+    injections[i].write(output_path_injections + '/H-H1-SIM-{0}-{1}.gwf'.format(merger_times[i], duration))
 
-print('Generated {0} injections successfully'.format(len(injections)))
+
+print('Generated {0} injections successfully (saved to {1})'.format(len(injections), output_path_injections))
+
+
+
+
+
+#Generate Q-Scans
 
 print('Generating Q-Scans...')
 
@@ -231,4 +239,4 @@ for i in range(int(number_injections)):
 
         ind_figs_all["injection {0}".format(i+1)][j].savefig(output_path_plots + '/qscan{0}-{1}-{2}s.jpg'.format(i+1, merger_times[i], durations[j]))
 
-print('Q-scans generated successfully')
+print('Q-scans generated successfully, saved to {0}'.format(output_path_plots))
