@@ -11,6 +11,8 @@ sampling_frequency = 16384
 duration = 128 #Required duration for Omicron
 minimum_frequency = 10
 
+cwd = os.getcwd()
+
 output_path_injections = './injections' #default output path for injections
 output_path_plots = './plots' #default output path for plots (q-scans)
 
@@ -45,8 +47,6 @@ for i in range(int(number_injections)):
         merger = random.randint(run_select[0], run_select[1]-duration)
         start = merger - duration/2
         end = start + duration
-
-        print(start, end)
 
         try: #Attempt to locate GWOSC dataset 
             time_series = TimeSeries.fetch_open_data('H1', start, end, sample_rate = sampling_frequency, verbose = True)
@@ -155,7 +155,7 @@ assert len(injections) == int(number_injections) #Ensure that we have the correc
 
 answer = "x"
 
-#Setting path specification, chose default or custom path
+#Setting path specification, chose default or custom path (custom path not implemented yet)
 
 while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
     print('Use default output path for injections? "{0}"'.format(output_path_injections))
@@ -174,8 +174,18 @@ while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
         if not os.path.exists(output_path):
             os.mkdir(output_path)
 
+# Setting up Omicron Configuration
+
 for i in range(int(number_injections)):
-    injections[i].write(output_path_injections + '/H-H1-SIM-{0}-{1}.gwf'.format(merger_times[i], duration))
+    # Naming gwf channel to the Omicron specification
+    injections[i].name = "H1:SIM_CHIRP"
+    injections[i].channel = "H1:SIM_CHIRP"
+    injections[i].write(output_path_injections + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
+
+    #Generating Cache file, points to the location of the injection
+    omicron_cache_file = open(output_path_injections + '/H-H1_SIM-{0}-{1}.lcf'.format(int(start_times[i]), duration), "w+")
+    omicron_cache_file.write('file://localhost' + cwd + '/injections' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
+    omicron_cache_file.close()
 
 
 print('Generated {0} injections successfully (saved to {1})'.format(len(injections), output_path_injections))
@@ -202,7 +212,7 @@ for i in range(int(number_injections)):
     qspecgram_durations = []
     for j in range(len(durations)):
 
-        print(type(injections[i]))
+        print('Plot {} Generated'.format(j+1))
         
         qspecgram = injections[i].q_transform(frange = [10,2048], outseg=(merger_times[i] - durations[j]/2, merger_times[i] + durations[j]/2),tres=0.002, fres = 0.5, whiten=True, qrange = [4,64], gps = merger_times[i])
 
