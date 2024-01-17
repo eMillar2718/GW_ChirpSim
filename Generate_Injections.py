@@ -198,22 +198,19 @@ for i in range(int(number_injections)):
 
     omicron_command = "omicron-process --gps {0} {1} --ifo H1 --config-file ./sim.ini --output-dir ./run --no-segdb --cache-file ./sim.lcf -vvv --file-tag SIM SIM --no-submit".format(int(start_times[i]),int(end_times[i]))
 
-    run_pyomicron = subprocess.run([omicron_command.split()], shell=True, capture_output=True, text=True)
+    run_pyomicron = subprocess.run(omicron_command.split(), shell=False, capture_output=True, text=True)
     print(run_pyomicron.stdout)
 
-    wd = os.getcwd()
-    os.chdir("run/condor")
-    run_omicron_script = subprocess.run("./omicron-SIM.sh", shell=True, capture_output=True, text=True)
-    os.chdir(wd)
+    run_omicron_script = subprocess.run("./run/condor/omicron-SIM.sh", shell=True, capture_output=True, text=True)
 
     print(run_omicron_script.stdout)
 
-    omicron_output_path = cwd + "/omicron/runmerge/H1:SIM_CHIRP/H1-SIM_CHIRP_OMICRON-{}-124.root".format(int(start_times[i]))
+    omicron_output_path = cwd + "/run/merge/H1:SIM_CHIRP/H1-SIM_CHIRP_OMICRON-{}-124.root".format(int(start_times[i]+2)) #+2 as the chunk starts 2s later
 
 
     wd = os.getcwd()
     os.chdir("run/merge/H1:SIM_CHIRP")
-    print_omicron = subprocess.run(["omicron-print", "file={}".format(omicron_output_path)], shell=True, capture_output=True, text=True)
+    print_omicron = subprocess.run(["omicron-print", "file={}".format(omicron_output_path)], shell=False, capture_output=True, text=True)
     os.chdir(wd)
 
     print(print_omicron.stdout)
@@ -228,10 +225,6 @@ for i in range(int(number_injections)):
         # If trigger file meets certain conditions, allow the injection to pass to the next step, if not then delete the file
 
     
-
-
-
-
 #Generate Q-Scans
 
 print('Generating Q-Scans...')
