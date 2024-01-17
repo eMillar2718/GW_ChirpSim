@@ -3,6 +3,7 @@ import numpy as np
 from gwpy.timeseries import TimeSeries
 import os
 import random
+import subprocess
 
 from gravityspy.plot.plot import plot_qtransform
 
@@ -175,6 +176,8 @@ while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
             os.mkdir(output_path)
 
 # Setting up Omicron Configuration
+            
+injections_omicron_valid = []
 
 for i in range(int(number_injections)):
     # Naming gwf channel to the Omicron specification
@@ -183,13 +186,48 @@ for i in range(int(number_injections)):
     injections[i].write(output_path_injections + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
 
     #Generating Cache file, points to the location of the injection
-    omicron_cache_file = open(output_path_injections + '/H-H1_SIM-{0}-{1}.lcf'.format(int(start_times[i]), duration), "w+")
+    omicron_cache_file = open('./sim.lcf'.format(int(start_times[i]), duration), "w+")
     omicron_cache_file.write('file://localhost' + cwd + '/injections' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
     omicron_cache_file.close()
 
+    #print('Generated {0} injections successfully (saved to {1})'.format(len(injections), output_path_injections))
 
-print('Generated {0} injections successfully (saved to {1})'.format(len(injections), output_path_injections))
+    print('Injection {} generated successfully, running through Omicron...'.format(i+1))
 
+    # Run injection through Omicron (WORK IN PROGRESS)
+
+    omicron_command = "omicron-process --gps {0} {1} --ifo H1 --config-file ./sim.ini --output-dir ./run --no-segdb --cache-file ./sim.lcf -vvv --file-tag SIM SIM --no-submit".format(int(start_times[i]),int(end_times[i]))
+
+    run_pyomicron = subprocess.run([omicron_command.split()], shell=True, capture_output=True, text=True)
+    print(run_pyomicron.stdout)
+
+    wd = os.getcwd()
+    os.chdir("run/condor")
+    run_omicron_script = subprocess.run("./omicron-SIM.sh", shell=True, capture_output=True, text=True)
+    os.chdir(wd)
+
+    print(run_omicron_script.stdout)
+
+    omicron_output_path = cwd + "/omicron/runmerge/H1:SIM_CHIRP/H1-SIM_CHIRP_OMICRON-{}-124.root".format(int(start_times[i]))
+
+
+    wd = os.getcwd()
+    os.chdir("run/merge/H1:SIM_CHIRP")
+    print_omicron = subprocess.run(["omicron-print", "file={}".format(omicron_output_path)], shell=True, capture_output=True, text=True)
+    os.chdir(wd)
+
+    print(print_omicron.stdout)
+
+
+        
+        # Create temp directory
+            # tmp/omicron
+            # Create ini file
+            # move injection and cache file to directory
+        # Run omicron script in the temp directory 
+        # If trigger file meets certain conditions, allow the injection to pass to the next step, if not then delete the file
+
+    
 
 
 
@@ -250,3 +288,8 @@ for i in range(int(number_injections)):
         ind_figs_all["injection {0}".format(i+1)][j].savefig(output_path_plots + '/qscan{0}-{1}-{2}s.jpg'.format(i+1, merger_times[i], durations[j]))
 
 print('Q-scans generated successfully, saved to {0}'.format(output_path_plots))
+
+# to-do
+
+    # add custom path specification
+    # add observing run selection (chose run or randomise)?
