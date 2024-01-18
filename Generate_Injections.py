@@ -210,11 +210,36 @@ for i in range(int(number_injections)):
 
     wd = os.getcwd()
     os.chdir("run/merge/H1:SIM_CHIRP")
-    print_omicron = subprocess.run(["omicron-print", "file={}".format(omicron_output_path)], shell=False, capture_output=True, text=True)
+    print_omicron_all = subprocess.run(["omicron-print", "file={}".format(omicron_output_path)], shell=False, capture_output=True, text=True)
+    print_omicron_snr = subprocess.run(["omicron-print", "file={}".format(omicron_output_path), "print-freq=0"], shell=False, capture_output=True, text=True)
     os.chdir(wd)
 
-    print(print_omicron.stdout)
+    print(print_omicron_all.stdout)
+    print(print_omicron_snr.stdout)
 
+    #Formatting the output readings
+
+    output_split = print_omicron_all.stdout.split("\n")
+    output_numbers = output_split[4:]
+
+    output_array = []
+    for row in output_numbers:
+        output_array.append(list(map(float, row.split())))
+
+    peak_times = []
+    SNRs = []
+    frequencies = []
+
+#    for i, readings in enumerate(output_array):
+#        peak_time = output_array[i][0]
+#        SNR = output_array[i][1]
+#        frequency = output_array[i][2]
+
+#        peak_times.append(peak_time)
+#        SNRs.append(SNR)
+#        frequencies.append(frequency)
+
+#    print('max SNR is {}'.format(max(SNRs)))
 
         
         # Create temp directory
