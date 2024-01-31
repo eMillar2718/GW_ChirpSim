@@ -70,7 +70,7 @@ def get_gwosc_data(number_of_injections, sample_rate):
 
     return time_series_all, merger_times, start_times, end_times
 
-def simulate_waveforms(merger_times, timeseries_dataset): 
+def simulate_and_inject_waveforms(merger_times, timeseries_dataset): 
 
     """
 
@@ -151,8 +151,6 @@ def simulate_waveforms(merger_times, timeseries_dataset):
         injections.append(data_injected)
         metadatas.append(metadata)
 
-    assert len(injections) == int(number_injections) #Ensure that we have the correct number of injections
-
     return injections, metadatas
 
 def save_injections(injections, start_times, default_path = './injections'):
@@ -193,7 +191,7 @@ def save_injections(injections, start_times, default_path = './injections'):
 
         print('Injection {} generated successfully, running through Omicron...'.format(i+1))
 
-def pass_injection_through_omicron(injections, start_times, end_times, duration):
+def pass_injection_through_omicron(number_of_injections, start_times, end_times, duration):
 
     """
     injections: list of timeseries data with injected signal
@@ -202,7 +200,7 @@ def pass_injection_through_omicron(injections, start_times, end_times, duration)
     
     """
 
-    for i in range(len(injections)):
+    for i in range(number_of_injections):
 
         #Generating Cache file, points to the location of the injection
 
@@ -302,7 +300,7 @@ def generate_qscans(injections, start_times, merger_times, default_path = './plo
     ind_figs_all = {}
     superfigs = []
 
-    for i in range(int(number_injections)):
+    for i in range(len(injections)):
         
         qspecgram_durations = []
         for j in range(len(durations)):
@@ -338,7 +336,7 @@ def generate_qscans(injections, start_times, merger_times, default_path = './plo
             if not os.path.exists(custom_path):
                 os.mkdir(custom_path)
 
-    for i in range(int(number_injections)):
+    for i in range(len(injections)):
 
         for j in range(len(durations)):
 
@@ -353,4 +351,18 @@ minimum_frequency = 10
 
 cwd = os.getcwd()
 
-number_injections = input('Enter number of injections to generate: ')
+
+number_input = input('Enter number of injections to generate: ')
+
+timeseries_all, merger_times, start_times, end_times = get_gwosc_data(number_of_injections=number_input, sample_rate=sampling_frequency)
+
+injections = simulate_and_inject_waveforms(merger_times=merger_times, timeseries_dataset=timeseries_all)
+
+save_injections(injections=injections, start_times=start_times, end_times=end_times)
+
+number_of_injections = int(len(injections))
+
+peak_times, frequencies, snrs = pass_injection_through_omicron(number_of_injections=number_of_injections, start_times=start_times, end_times=end_times, duration=duration)
+
+check_omicron_threshold(snrs=snrs, start_times=start_times, injection_path='./injections')
+
