@@ -95,20 +95,22 @@ for i in range(int(number_injections)):
     injection_parameters_single = dict(
         mass_1=mass_1_gen, 
         mass_2=mass_2_gen,
-        a_1=0.4, 
-        a_2=0.3, 
-        tilt_1=0.5, 
-        tilt_2=1.0, 
-        phi_12=1.7, 
-        phi_jl=0.3,
+        a_1=0.4, # spin
+        a_2=0.3, # spin
+        tilt_1=0.5, # spin
+        tilt_2=1.0, # spin
+        phi_12=1.7, # uniform 0-2pi (periodic boundary)
+        phi_jl=0.3, # uniform 0-2pi (periodic boundary)
         luminosity_distance=500., 
-        theta_jn=0.4, 
-        psi=2.659,
-        phase=1.3, 
+        theta_jn=0.4, #Zenith angle between the total angular momentum and the line of sight, sinusoidal 0-pi
+        psi=2.659, #Polarization angle of the source, uniform 0-2pi (periodic boundary)
+        phase=1.3, # uniform 0-2pi (periodic boundary)
         geocent_time=merger_times[i],
-        ra=1.375, 
-        dec=-1.2108
+        ra=1.375, #uniform 0-2pi (periodic boundary)
+        dec=-1.2108 #cossinusoidal -pi/2 - pi/2
         )
+    
+    #https://academic.oup.com/mnras/article/499/3/3295/5909620 - paper which states extrinisic distributions
     
     injection_parameters_all.append(injection_parameters_single)
 
@@ -208,11 +210,11 @@ for i in range(int(number_injections)):
     omicron_output_path = cwd + "/run/merge/H1:SIM_CHIRP/H1-SIM_CHIRP_OMICRON-{}-124.root".format(int(start_times[i]+2)) #+2 as the chunk starts 2s later
 
 
-    wd = os.getcwd()
-    os.chdir("run/merge/H1:SIM_CHIRP")
+    #wd = os.getcwd()
+    #os.chdir("run/merge/H1:SIM_CHIRP")
     print_omicron_all = subprocess.run(["omicron-print", "file={}".format(omicron_output_path)], shell=False, capture_output=True, text=True)
     print_omicron_snr = subprocess.run(["omicron-print", "file={}".format(omicron_output_path), "print-freq=0"], shell=False, capture_output=True, text=True)
-    os.chdir(wd)
+    #os.chdir(wd)
 
     print(print_omicron_all.stdout)
     print(print_omicron_snr.stdout)
@@ -220,34 +222,48 @@ for i in range(int(number_injections)):
     #Formatting the output readings
 
     output_split = print_omicron_all.stdout.split("\n")
-    output_numbers = output_split[4:]
+    output_numbers = output_split[4:-1]
+
+    print(output_numbers)
 
     output_array = []
     for row in output_numbers:
         output_array.append(list(map(float, row.split())))
 
+    print(output_array)
+
     peak_times = []
-    SNRs = []
     frequencies = []
+    SNRs = []
 
-#    for i, readings in enumerate(output_array):
-#        peak_time = output_array[i][0]
-#        SNR = output_array[i][1]
-#        frequency = output_array[i][2]
+    for i, readings in enumerate(output_array):
+        peak_time = output_array[i][0]
+        frequency = output_array[i][1]
+        SNR = output_array[i][2]
 
-#        peak_times.append(peak_time)
-#        SNRs.append(SNR)
-#        frequencies.append(frequency)
+        peak_times.append(peak_time)
+        SNRs.append(SNR)
+        frequencies.append(frequency)
 
-#    print('max SNR is {}'.format(max(SNRs)))
+    print('max SNR is {}'.format(max(SNRs)))
 
+    if float(max(SNRs)) > 7.5:
+        print('SNR greater than 7.5, injection allowed')
+
+        os.mkdir('./successful_injections')
+        os.rename(output_path_injections + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration), './successful_injections')
+
+    else:
+        print('SNR less than 7.5, injection rejected')
+        os.remove(output_path_injections + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
         
         # Create temp directory
             # tmp/omicron
             # Create ini file
             # move injection and cache file to directory
         # Run omicron script in the temp directory 
-        # If trigger file meets certain conditions, allow the injection to pass to the next step, if not then delete the file
+        # If trigger file meets certain conditions (if max trigger SNR is lower than 7.5), allow the injection to pass to the next step, if not then delete the file
+        # Compare trigger time to merger time?
 
     
 #Generate Q-Scans
