@@ -183,8 +183,8 @@ def save_injections(injections, start_times, default_path = './injections'):
     for i in range(len(injections)):
 
         # Naming gwf channel to the Omicron specification
-        injections[i].name = "H1:SIM_CHIRP"
-        injections[i].channel = "H1:SIM_CHIRP"
+        injections[i].name = "H1:SIM-CHIRP"
+        injections[i].channel = "H1:SIM-CHIRP"
 
         # Writing injection as .gwf file
         injections[i].write(output_path_injections + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
@@ -199,6 +199,9 @@ def pass_injection_through_omicron(number_of_injections, start_times, end_times,
     duration: duration of the timeseries
     
     """
+    snr_all = []
+    frequency_all = []
+    peak_time_all = []
 
     for i in range(number_of_injections):
 
@@ -257,7 +260,11 @@ def pass_injection_through_omicron(number_of_injections, start_times, end_times,
             snrs.append(snr)
             frequencies.append(frequency)
 
-    return peak_times, frequencies, snrs
+        snr_all.append(snrs)
+        frequency_all.append(frequencies)
+        peak_time_all.append(peak_times)
+
+    return peak_time_all, frequency_all, snr_all
 
 
 def check_omicron_threshold(snrs, start_times, injection_path):
@@ -271,7 +278,15 @@ def check_omicron_threshold(snrs, start_times, injection_path):
 
     """
 
-    print('max SNR is {}'.format(max(snrs)))
+    for i in range(int(len(start_times))):
+
+        if snrs:
+
+            print('max SNR is {}'.format(max(snrs)))
+        
+        else:
+
+            print('No trigger file detected for injenction')
 
     for i in range(len(start_times)):
 
@@ -351,30 +366,19 @@ minimum_frequency = 10
 
 cwd = os.getcwd()
 
-for attempt in range(10):
-    try:
 
-        number_input = input('Enter number of injections to generate: ')
+number_input = input('Enter number of injections to generate: ')
 
-        timeseries_all, merger_times, start_times, end_times = get_gwosc_data(number_of_injections=number_input, sample_rate=sampling_frequency)
+timeseries_all, merger_times, start_times, end_times = get_gwosc_data(number_of_injections=number_input, sample_rate=sampling_frequency)
 
-        injections, metadatas = simulate_and_inject_waveforms(merger_times=merger_times, timeseries_dataset=timeseries_all)
+injections, metadatas = simulate_and_inject_waveforms(merger_times=merger_times, timeseries_dataset=timeseries_all)
 
-        save_injections(injections=injections, start_times=start_times)
+save_injections(injections=injections, start_times=start_times)
 
-        number_of_injections = int(len(injections))
+number_of_injections = int(len(injections))
 
-        peak_times, frequencies, snrs = pass_injection_through_omicron(number_of_injections=number_of_injections, start_times=start_times, end_times=end_times, duration=duration)
+peak_times, frequencies, snrs = pass_injection_through_omicron(number_of_injections=number_of_injections, start_times=start_times, end_times=end_times, duration=duration)
 
-        check_omicron_threshold(snrs=snrs, start_times=start_times, injection_path='./injections')
+check_omicron_threshold(snrs=snrs, start_times=start_times, injection_path='./injections')
 
-    except:
-        print("error with injection, retrying...")
 
-    else:
-        print("Process complete")
-        break
-
-else:
-
-    print("could not generate injection")    
