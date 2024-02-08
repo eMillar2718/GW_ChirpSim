@@ -225,7 +225,7 @@ def pass_injection_through_omicron(number_of_injections, start_times, end_times,
         print(run_omicron_script.stdout)
 
         # specifying the path of the omicron trigger files
-        omicron_output_path = cwd + "/run/merge/H1:SIM_CHIRP/H1-SIM_CHIRP_OMICRON-{}-124.root".format(int(start_times[i]+2)) #+2 as the chunk starts 2s later
+        omicron_output_path = cwd + "/run/merge/H1:SIM-CHIRP/H1-SIM_CHIRP_OMICRON-{}-124.root".format(int(start_times[i]+2)) #+2 as the chunk starts 2s later
 
         # printing the result of the trigger files
         print_omicron_all = subprocess.run(["omicron-print", "file={}".format(omicron_output_path)], shell=False, capture_output=True, text=True)
@@ -282,7 +282,7 @@ def check_omicron_threshold(snrs, start_times, injection_path):
 
         if snrs:
 
-            print('max SNR is {}'.format(max(snrs)))
+            print('max SNR is {}'.format(max(snrs[i])))
         
         else:
 
