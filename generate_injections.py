@@ -7,9 +7,20 @@ import subprocess
 
 from gravityspy.plot.plot import plot_qtransform
 
+DURATION = 128
 
 
-def get_gwosc_data(number_of_injections, sample_rate):
+def get_gwosc_data(duration :int = DURATION, sample_rate: int = 16384):
+
+    """
+    Get LIGO data from GWOSC 
+
+    number: number of strain dataset to fetch
+    duration: length of signal segment (default = 128, optimal for omicron and PSD estimation)
+    sample_rate: default = 16384, optimal for GravitySpy Q-scan generation
+
+    merger_time is simply the centre of the signal segment, this data is raw and has no injections
+    """
 
     #Specifying GPS time ranges for each observing run
     O1_range = [1126051217, 1137254417]
@@ -19,230 +30,196 @@ def get_gwosc_data(number_of_injections, sample_rate):
 
     Obs_runs = [O1_range, O2_range, O3a_range, O3b_range]
 
-    merger_times = []
-    start_times = []
-    end_times = []
-    time_series_all = []
+    for attempt in range(10): #Try generated GPS time 10 times
 
-    for i in range(int(number_of_injections)):
+        #Randomly select an observing run
+        run_select = Obs_runs[random.randint(0,len(Obs_runs)-1)]
 
-        for attempt in range(10): #Try generated GPS time 10 times
+        print('Run Selection = {}'.format(run_select))
 
-            #Randomly select an observing run
-            run_select = Obs_runs[random.randint(0,len(Obs_runs)-1)]
+        #Randomly select a start time within that observing run, leaving room at the end for signal trail-off
 
-            print('Run Selection = {}'.format(run_select))
+        merger = random.randint(run_select[0], run_select[1]-duration)
+        start = merger - duration/2
+        end = start + duration
 
-            #Randomly select a start time within that observing run, leaving room at the end for signal trail-off
-            #Specify start times, end times, merger times
-
-            merger = random.randint(run_select[0], run_select[1]-duration)
-            start = merger - duration/2
-            end = start + duration
-
-            try: #Attempt to locate GWOSC dataset 
-                time_series = TimeSeries.fetch_open_data('H1', start, end, sample_rate = sample_rate, verbose = True)
-            
-            except: 
-                print('Could not find dataset, retrying')
-
-            else: #if successful, break
-                merger_times.append(merger)
-                start_times.append(start)
-                end_times.append(end)
-                break
-
-        else: #for-else: if the loop doesn't break (no successful dataset), print error message stating number of tries
+        try: #Attempt to locate GWOSC dataset 
+            fetch_time_series = TimeSeries.fetch_open_data('H1', start, end, sample_rate = sample_rate, verbose = True)
         
-            start = 1126259467
-            start_times.append(start)
-            
-            end = 1126259497
-            end_times.append(end)
-            
-            merger = start + duration/2
-            merger_times.append(merger)
+        except: 
+            print('Could not find dataset, retrying')
 
-            print('Could not locate dataset after {0} tries, attempting test times'.format(attempt+1))
-            time_series = TimeSeries.fetch_open_data('H1', start, end, sample_rate = sample_rate, verbose = True) #known working value
-            
-        time_series_all.append(time_series)
+        else: #if successful, break
 
-    return time_series_all, merger_times, start_times, end_times
+            time_series = fetch_time_series, int(start), int(end), merger
+            break
 
-def simulate_and_inject_waveforms(merger_times, timeseries_dataset): 
+    else:
+
+        print('Could not find dataset after {} attempts'.format(attempt + 1))
+
+    return time_series
+
+def save_to_gwf(data, output_path: str, duration: int = DURATION, file_tag: str = 'SIM', signal_tag:str = 'CHIRP'):
 
     """
+    Save GWOSC data to gwf, and set channel name (allows omicron to be ran on empty strain data)
 
-    merger_times: array of gps times to specify as the merger time
+    data[0] = timeseries
+    data[1] = segment start time
+    data[2] = segment end time
+    data[3] = merger time
+    """
 
-    timeseries_dataset: gwosc timeseries data to inject signals into
+    if not os.path.exists(output_path):
+        os.makedirs(output_path, exist_ok = True)
+        
+    segment_start_time = data[1]
+
+    # Naming gwf channel to the Omicron specification
+    data[0].name = "H1:" + file_tag + "-" + signal_tag
+    data[0].channel = "H1:" + file_tag + "-" + signal_tag
+
+    # Writing injection as .gwf file
+    data[0].write(output_path + '/H-H1_'+ file_tag +'-{0}-{1}.gwf'.format(segment_start_time, duration))
+
+def generate_omicron_cache_files(data, data_absolute_path : str, output_path: str = os.getcwd(), duration:int = DURATION, file_tag:str = 'SIM'):
+
+    """
+    Generate a .lcf cache file for a given segment to run omicron 
+    data: list [timeseries, start_time, end_time, merger_time]
+    data_path: string of relative path to data, not including the datafile itself
+    output_path: default is cwd
+    file_tag: tags the file with relevant info (e.g RAW or STRAIN)
+    """
+
+    segment_start_time = data[1]
+    cwd = os.getcwd()
+    #Generating Cache file, points to the location of the injection
+
+    omicron_cache_file = open(output_path + '/' + file_tag.lower()+ '.lcf', "w+")
+    omicron_cache_file.write('file://localhost' + data_absolute_path + '/H-H1_'+ file_tag +'-{0}-{1}.gwf'.format(segment_start_time, duration))
+    omicron_cache_file.close()
+
+def pass_through_omicron(data):
     
     """
+    Run omicron on a given set of data, returns a list of each terminal output message for each signal in the dataset
 
-
-
-    injection_parameters_all = []
-    waveform_arguments_all = []
-    waveform_generators_all = []
-
-    for i in range(len(timeseries_dataset)):
-
-        mass_1_gen = np.random.randint(5,50)
-        mass_2_gen = np.random.randint(5,mass_1_gen)
-
-        injection_parameters_single = dict(
-            mass_1=mass_1_gen, 
-            mass_2=mass_2_gen,
-            a_1=0.4, # spin
-            a_2=0.3, # spin
-            tilt_1=0.5, # spin
-            tilt_2=1.0, # spin
-            phi_12=1.7, # spin
-            phi_jl=0.3, # spin
-            luminosity_distance=500., 
-            theta_jn=0.4, 
-            psi=2.659,
-            phase=1.3, 
-            geocent_time=merger_times[i],
-            ra=1.375, 
-            dec=-1.2108
-            )
-        
-        injection_parameters_all.append(injection_parameters_single)
-
-        #Printing masses for debugging 
-
-        mass1 = injection_parameters_single["mass_1"]
-        mass2 = injection_parameters_single["mass_2"]
-
-        print('Signal {0} Masses: M1 = {1}, M2 = {2}'.format(i+1,mass1,mass2))
-
-        #Setting up waveform generator
-
-        waveform_argument_single = dict(
-            waveform_approximant="IMRPhenomPv2",
-            reference_frequency=minimum_frequency,
-            minimum_frequency=minimum_frequency,
-            start_time=merger_times[i] - 2
-        )
-
-        waveform_arguments_all.append(waveform_argument_single)
-
-        waveform_generator_single = bilby.gw.WaveformGenerator(
-            duration = duration,
-            sampling_frequency=sampling_frequency,
-            frequency_domain_source_model=bilby.gw.source.lal_binary_black_hole,
-            parameter_conversion=bilby.gw.conversion.convert_to_lal_binary_black_hole_parameters,
-            waveform_arguments=waveform_argument_single,
-        )
-
-        waveform_generators_all.append(waveform_generator_single)
-
-    injections = []
-    metadatas = []
-
-    for i in range(len(timeseries_dataset)):
-
-        data_injected, metadata = bilby.gw.detector.inject_signal_into_gwpy_timeseries(data = timeseries_dataset[i],
-            waveform_generator=waveform_generators_all[i], parameters=injection_parameters_all[i], det = 'H1'
-        )
-
-        injections.append(data_injected)
-        metadatas.append(metadata)
-
-    return injections, metadatas
-
-def save_to_gwf(data, start_times, file_path):
-
-    if not os.path.exists(file_path):
-        os.mkdir(file_path)
-        
-    for i in range(len(data)):
-
-        # Naming gwf channel to the Omicron specification
-        data[i].name = "H1:SIM-CHIRP"
-        data[i].channel = "H1:SIM-CHIRP"
-
-        # Writing injection as .gwf file
-        data[i].write(file_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
-
-def pass_injection_through_omicron(start_times, end_times, duration, file_path = './injections'):
-
-    """
     injections: list of timeseries data with injected signal
     start_times: list of of the GPS start time for each timeseries data
     duration: duration of the timeseries
     
     """
-    snr_all = []
-    frequency_all = []
-    peak_time_all = []
 
-    for i in range(int(len(start_times))):
+    start_time = data[1]
+    end_time = data[2]
 
-        #Generating Cache file, points to the location of the injection
+    # Run injection through Omicron
 
-        omicron_cache_file = open('./sim.lcf', "w+")
-        omicron_cache_file.write('file://localhost' + cwd + file_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
-        omicron_cache_file.close()
+    # Setting the terminal command to run omicron
+    omicron_command = "omicron-process --gps {0} {1} --ifo H1 --config-file ./sim.ini --output-dir ./run --no-segdb --cache-file ./sim.lcf -vvv --file-tag SIM SIM --no-submit".format(start_time,end_time)
 
-        # Run injection through Omicron
+    # running pyomicron through terminal and printing the output
+    run_pyomicron = subprocess.run(omicron_command.split(), shell=False, capture_output=True, text=True)
+    print(run_pyomicron.stdout)
 
-        # Setting the terminal command to run omicron
-        omicron_command = "omicron-process --gps {0} {1} --ifo H1 --config-file ./sim.ini --output-dir ./run --no-segdb --cache-file ./sim.lcf -vvv --file-tag SIM SIM --no-submit".format(int(start_times[i]),int(end_times[i]))
+    # running omicron bash script generated by pyomicron 
+    run_omicron_script = subprocess.run("./run/condor/omicron-SIM.sh", shell=True, capture_output=True, text=True)
+    print(run_omicron_script.stdout)
 
-        # running pyomicron through terminal and printing the output
-        run_pyomicron = subprocess.run(omicron_command.split(), shell=False, capture_output=True, text=True)
-        #print(run_pyomicron.stdout)
+    os.remove('sim.lcf')
 
-        # running omicron bash script generated by pyomicron 
-        run_omicron_script = subprocess.run("./run/condor/omicron-SIM.sh", shell=True, capture_output=True, text=True)
-        #print(run_omicron_script.stdout)
+    cwd = os.getcwd()
 
-        # specifying the path of the omicron trigger files
-        omicron_output_path = cwd + "/run/merge/H1:SIM-CHIRP/H1-SIM_CHIRP_OMICRON-{}-124.root".format(int(start_times[i]+2)) #+2 as the chunk starts 2s later
+    # specifying the path of the omicron trigger files
+    omicron_output_path = cwd + "/run/merge/H1:SIM-CHIRP/H1-SIM_CHIRP_OMICRON-{}-124.root".format(int(start_time+2)) #+2 as the chunk starts 2s later
 
-        # printing the result of the trigger files
-        print_omicron_all = subprocess.run(["omicron-print", "file={}".format(omicron_output_path)], shell=False, capture_output=True, text=True)
-        print_omicron_snr = subprocess.run(["omicron-print", "file={}".format(omicron_output_path), "print-freq=0"], shell=False, capture_output=True, text=True)
+    # printing the result of the trigger files
+    omicron_output = subprocess.run(["omicron-print", "file={}".format(omicron_output_path)], shell=False, capture_output=True, text=True)
 
-        #print(print_omicron_all.stdout)
-        print(print_omicron_snr.stdout)
+    return omicron_output
 
-        #Formatting the output readings
+def parse_omicron_output(omicron_output):
 
-        output_split = print_omicron_all.stdout.split("\n")
-        output_numbers = output_split[4:-1]
+    """
+    Parsing the terminal output message from Omicron to be used in Python, returns a list of peak time, frequency, and SNR values for each signal
+    """
 
-        #print(output_numbers)
+    print(omicron_output.stdout)
 
-        output_array = []
-        for row in output_numbers:
-            output_array.append(list(map(float, row.split())))
 
-        #print(output_array)
+    #Formatting the output readings
 
-        peak_times = []
-        frequencies = []
-        snrs = []
+    output_split = omicron_output.stdout.split("\n")
+    output_numbers = output_split[4:-1]
 
-        for i, readings in enumerate(output_array):
-            peak_time = output_array[i][0]
-            frequency = output_array[i][1]
-            snr = output_array[i][2]
+    #print(output_numbers)
 
-            peak_times.append(peak_time)
-            snrs.append(snr)
-            frequencies.append(frequency)
+    output_array = []
+    for row in output_numbers:
+        output_array.append(list(map(float, row.split())))
 
-        snr_all.append(snrs)
-        frequency_all.append(frequencies)
-        peak_time_all.append(peak_times)
+    #print(output_array)
+    peak_times = []
+    frequencies = []
+    snrs = []
 
-    return peak_time_all, frequency_all, snr_all
+    for i, readings in enumerate(output_array):
+        peak_time = output_array[i][0]
+        frequency = output_array[i][1]
+        snr = output_array[i][2]
 
-def check_omicron_threshold(snrs, start_times, injection_path):
+        peak_times.append(peak_time)
+        snrs.append(snr)
+        frequencies.append(frequency)
+
+    return peak_times, frequencies, snrs
+
+def check_omicron_threshold_strain(data, snrs: list, signal_current_path:str, duration = DURATION):
+
+    """
+    Sorts the strain data into clean strain and contaminated strain
+
+    snrs: list of snr values from omicron
+    start_times: omicron start times
+    signal_current_path: path to signal 
+
+    """
+
+    start_time = data[1]
+
+    if snrs:
+
+        print('max SNR for signal is {}'.format(max(snrs)))
+
+        if max(snrs) > 7.5:
+            print('peak SNR greater than 7.5, strain is contaminated')
+
+            os.mkdir('./contaminated_strain')
+            os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './contaminated_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
+
+            strain_status = 'contaminated'
+
+        else:
+            print('peak SNR greater than 7.5, strain is contaminated')
+
+            os.mkdir('./contaminated_strain')
+            os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './contaminated_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
+
+            strain_status = 'contaminated'
+
+    else:
+        print('No triggers detected, strain is clean') 
+
+        os.mkdir('./clean_strain')
+        os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './clean_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
+        
+        strain_status = 'clean'
+    
+    return strain_status
+        
+def check_omicron_threshold_injection(data, snrs, signal_current_path, duration = DURATION):
 
     """
     Moves successful injections into a /successful_injections folder and deletes the failed ones (minimum SNR of 7.5)
@@ -253,31 +230,113 @@ def check_omicron_threshold(snrs, start_times, injection_path):
 
     """
 
-    for i in range(int(len(start_times))):
+    start_time = data[1]
 
-        if snrs:
+    if snrs:
 
-            print('max SNR for injection {0} is {1}'.format(i+1,max(snrs[i])))
+        print('max SNR for signal is {}'.format(max(snrs)))
+    
+
+        if max(snrs) > 7.5:
+            print('peak SNR greater than 7.5, injection accepted')
+            injection_status = 'successful'
+
+        else:
+            print('SNR less than 7.5, removing injection')
+            os.remove(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
+
+            injection_status = 'unsuccessful'
+
+    else:
+
+        print('No triggers detected for injenction')
+        injection_status = 'unsuccessful'
+
+    return injection_status
+
+def simulate_waveform(merger_time, minimum_frequency = 10, sampling_frequency = 16384, duration = DURATION, waveform_approximant = 'IMRPhenomPv2'):
+
+    """
+    Simulate waveform
+
+    merger_time: merger time from GWOSC timeseries data (data[3])
+    """
         
-        else:
+    mass_1_gen = np.random.randint(5,50)
+    mass_2_gen = np.random.randint(5,mass_1_gen)
 
-            print('No trigger file detected for injenction')
+    injection_parameters = dict(
+        mass_1=mass_1_gen, 
+        mass_2=mass_2_gen,
+        a_1=0.4, # spin
+        a_2=0.3, # spin
+        tilt_1=0.5, # spin
+        tilt_2=1.0, # spin
+        phi_12=1.7, # spin
+        phi_jl=0.3, # spin
+        luminosity_distance=500., 
+        theta_jn=0.4, 
+        psi=2.659,
+        phase=1.3, 
+        geocent_time=merger_time,
+        ra=1.375, 
+        dec=-1.2108
+        )
 
-    for i in range(len(start_times)):
 
+    #Printing masses for debugging 
 
-        if max(snrs[i]) > 7.5:
-            print('SNR greater than 7.5, injection allowed')
+    mass1 = injection_parameters["mass_1"]
+    mass2 = injection_parameters["mass_2"]
 
-            os.mkdir('./successful_injections')
-            os.rename(injection_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration), './successful_injections' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
+    print('Masses: M1 = {0}, M2 = {1}'.format(mass1,mass2))
 
-        else:
-            print('SNR less than 7.5, injection rejected')
-            os.remove(injection_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
+    #Setting up waveform generator
 
-def generate_qscans(injections, start_times, merger_times, default_path = './plots'):    
+    waveform_arguments = dict(
+        waveform_approximant=waveform_approximant,
+        reference_frequency=minimum_frequency,
+        minimum_frequency=minimum_frequency,
+        start_time=merger_time - 2
+    )
 
+    waveform_generator = bilby.gw.WaveformGenerator(
+        duration = duration,
+        sampling_frequency=sampling_frequency,
+        frequency_domain_source_model=bilby.gw.source.lal_binary_black_hole,
+        parameter_conversion=bilby.gw.conversion.convert_to_lal_binary_black_hole_parameters,
+        waveform_arguments=waveform_arguments,
+    )
+
+    return injection_parameters, waveform_generator
+
+def inject_waveform(data, injection_parameters, waveform_generator, detector = 'H1'): 
+
+    """
+    Inject simulated waveform into GWOSC timeseries 
+
+    data - list of timeseries data
+    data[0] = timeseries
+
+    """
+
+    injection_gen, metadata = bilby.gw.detector.inject_signal_into_gwpy_timeseries(data = data[0],
+        waveform_generator=waveform_generator, parameters=injection_parameters, det = detector
+    )
+
+    injection = [injection_gen, data[1], data[2], data[3]] #appending the timeseries list with start time, end time, and merger time from GWOSC dataset
+
+    return injection, metadata
+
+def generate_qscans(injection, start_time, merger_time, default_path = './plots'):    
+
+    injections = []
+    start_times = []
+    merger_times = []
+
+    injections.append(injection)  #This is purely for bebugging purpose, redo later
+    start_times.append(start_time)
+    merger_times.append(merger_time)
 
     print('Generating Q-Scans...')
 
@@ -308,23 +367,9 @@ def generate_qscans(injections, start_times, merger_times, default_path = './plo
         ind_figs_all["injection {0}".format(i+1)] = ind_fig_all
         superfigs.append(superfig)
 
-    answer = "x"
-    while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
-        print('Use default output path for plots? "{0}"'.format(default_path))
-        answer = input("[y/n] ")
 
-        if answer == "Yes" or answer == "yes" or answer == "Y" or answer == "y":
-
-            if not os.path.exists(default_path):
-                os.mkdir(default_path)
-
-        elif answer == "No" or answer == "no" or answer == "N" or answer == "n":
-
-            print('Please specify output path')
-            custom_path = input()
-
-            if not os.path.exists(custom_path):
-                os.mkdir(custom_path)
+        if not os.path.exists(default_path):
+            os.mkdir(default_path)
 
     for i in range(len(injections)):
 
@@ -334,29 +379,36 @@ def generate_qscans(injections, start_times, merger_times, default_path = './plo
 
     print('Q-scans generated successfully, saved to {0}'.format(default_path))
 
-#Universal parameters
-sampling_frequency = 16384
-duration = 128
-minimum_frequency = 10
+time_series = get_gwosc_data()
+
+save_to_gwf(data=time_series, output_path='./gwosc_data')
 
 cwd = os.getcwd()
 
-number_input = input('Enter number of injections to generate: ')
+generate_omicron_cache_files(data=time_series, data_absolute_path= cwd + '/gwosc_data')
 
-timeseries_all, merger_times, start_times, end_times = get_gwosc_data(number_of_injections=number_input, sample_rate=sampling_frequency)
+omicron_output_strain = pass_through_omicron(data=time_series)
 
-save_to_gwf(data=timeseries_all, start_times=start_times, file_path= './ligo_data')
+_, _, snrs_strain = parse_omicron_output(omicron_output=omicron_output_strain)
 
-peak_times, frequencies, snrs = pass_injection_through_omicron(start_times=start_times, end_times=end_times, duration=duration,file_path='./ligo_data')
+strain_status = check_omicron_threshold_strain(data = time_series, snrs = snrs_strain, signal_current_path='./gwosc_data')
 
-injections, metadatas = simulate_and_inject_waveforms(merger_times=merger_times, timeseries_dataset=timeseries_all)
+injection_parameters, waveform_generator = simulate_waveform(time_series[3])
 
-save_to_gwf(data=injections, start_times=start_times, file_path= './injections')
+injection, metadata = inject_waveform(time_series, injection_parameters=injection_parameters, waveform_generator=waveform_generator)
 
-number_of_injections = int(len(injections))
+save_to_gwf(data=injection, output_path='./injections/' + strain_status)
 
-print('Injection generated successfully, running through Omicron...')
+generate_omicron_cache_files(data= injection, data_absolute_path= cwd + '/injections/' + strain_status)
 
-peak_times, frequencies, snrs = pass_injection_through_omicron(start_times=start_times, end_times=end_times, duration=duration)
+omicron_output_injection = pass_through_omicron(injection)
 
-check_omicron_threshold(snrs=snrs, start_times=start_times, injection_path='./injections')
+_, _, snrs_injection = parse_omicron_output(omicron_output=omicron_output_injection)
+
+injection_status = check_omicron_threshold_injection(data=injection, snrs=snrs_injection, signal_current_path= './injections/' + strain_status)
+
+if injection_status == "successful":
+
+    generate_qscans(injection=injection[0], start_time= injection[1], merger_time= injection[3], default_path= './plots/' + strain_status)
+
+# Strains which are labelled "contaminated" may happen many seconds before or after merger as the omicron chunk is 128s, find a way to account for that 
