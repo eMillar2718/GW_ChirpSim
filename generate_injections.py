@@ -1,3 +1,5 @@
+#!/cvmfs/software.igwn.org/conda/envs/igwn/bin/python 
+
 import bilby
 import numpy as np
 from gwpy.timeseries import TimeSeries
@@ -176,7 +178,7 @@ def parse_omicron_output(omicron_output):
 
     return peak_times, frequencies, snrs
 
-def check_omicron_threshold_strain(data, snrs: list, signal_current_path:str, duration = DURATION):
+def check_omicron_threshold_strain(data, snrs: list, peak_times: list, signal_current_path:str, duration = DURATION):
 
     """
     Sorts the strain data into clean strain and contaminated strain
@@ -186,6 +188,8 @@ def check_omicron_threshold_strain(data, snrs: list, signal_current_path:str, du
     signal_current_path: path to signal 
 
     """
+    merger_time = data[3]
+    
 
     start_time = data[1]
 
@@ -193,8 +197,11 @@ def check_omicron_threshold_strain(data, snrs: list, signal_current_path:str, du
 
         print('max SNR for signal is {}'.format(max(snrs)))
 
-        if max(snrs) > 7.5:
-            print('peak SNR greater than 7.5, strain is contaminated')
+        max_snr = max(snrs)
+        corresponding_time = peak_times[snrs.index(max_snr)]
+
+        if max(snrs) > 7.5 and np.abs(corresponding_time-merger_time) < 4: #if there's a high SNR value within 4s of the merger
+            print('peak SNR greater than 7.5 detected near merger, strain is contaminated')
 
             os.mkdir('./contaminated_strain')
             os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './contaminated_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
@@ -202,12 +209,12 @@ def check_omicron_threshold_strain(data, snrs: list, signal_current_path:str, du
             strain_status = 'contaminated'
 
         else:
-            print('peak SNR greater than 7.5, strain is contaminated')
+            print('peak SNR near merger less than 7.5, strain is clean')
 
-            os.mkdir('./contaminated_strain')
-            os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './contaminated_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
+            os.mkdir('./clean_strain')
+            os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './clean_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
 
-            strain_status = 'contaminated'
+            strain_status = 'clean'
 
     else:
         print('No triggers detected, strain is clean') 
@@ -369,7 +376,7 @@ def generate_qscans(injection, start_time, merger_time, default_path = './plots'
 
 
         if not os.path.exists(default_path):
-            os.mkdir(default_path)
+            os.makedirs(default_path, exist_ok = True)
 
     for i in range(len(injections)):
 
@@ -389,9 +396,9 @@ generate_omicron_cache_files(data=time_series, data_absolute_path= cwd + '/gwosc
 
 omicron_output_strain = pass_through_omicron(data=time_series)
 
-_, _, snrs_strain = parse_omicron_output(omicron_output=omicron_output_strain)
+peak_times_strain, _, snrs_strain = parse_omicron_output(omicron_output=omicron_output_strain)
 
-strain_status = check_omicron_threshold_strain(data = time_series, snrs = snrs_strain, signal_current_path='./gwosc_data')
+strain_status = check_omicron_threshold_strain(data = time_series, snrs = snrs_strain, peak_times= peak_times_strain, signal_current_path='./gwosc_data')
 
 injection_parameters, waveform_generator = simulate_waveform(time_series[3])
 
@@ -410,5 +417,3 @@ injection_status = check_omicron_threshold_injection(data=injection, snrs=snrs_i
 if injection_status == "successful":
 
     generate_qscans(injection=injection[0], start_time= injection[1], merger_time= injection[3], default_path= './plots/' + strain_status)
-
-# Strains which are labelled "contaminated" may happen many seconds before or after merger as the omicron chunk is 128s, find a way to account for that 
