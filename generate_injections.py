@@ -5,7 +5,7 @@ import os
 import random
 import subprocess
 
-#from gravityspy.plot.plot import plot_qtransform
+from gravityspy.plot.plot import plot_qtransform
 
 
 
@@ -153,45 +153,21 @@ def simulate_and_inject_waveforms(merger_times, timeseries_dataset):
 
     return injections, metadatas
 
-def save_injections(injections, start_times, default_path = './injections'):
+def save_to_gwf(data, start_times, file_path):
 
-    answer = "x"
-
-    #Setting path specification, chose default or custom path (custom path not implemented yet)
-
-    while answer not in ["Yes", "yes", "Y", "y", "No", "no", "N", "n"]:
-        print('Use default output path for injections? "{0}"'.format(default_path))
-        answer = input("[y/n]: ")
-
-        if answer == "Yes" or answer == "yes" or answer == "Y" or answer == "y":
-
-            if not os.path.exists(default_path):
-                os.mkdir(default_path)
-                
-            output_path_injections = default_path
-
-        elif answer == "No" or answer == "no" or answer == "N" or answer =="n":
-
-            print('Please specify output path')
-            custom_path = input()
-
-            if not os.path.exists(custom_path):
-                os.mkdir(custom_path)
-            
-            output_path_injections = custom_path
+    if not os.path.exists(file_path):
+        os.mkdir(file_path)
         
-    for i in range(len(injections)):
+    for i in range(len(data)):
 
         # Naming gwf channel to the Omicron specification
-        injections[i].name = "H1:SIM-CHIRP"
-        injections[i].channel = "H1:SIM-CHIRP"
+        data[i].name = "H1:SIM-CHIRP"
+        data[i].channel = "H1:SIM-CHIRP"
 
         # Writing injection as .gwf file
-        injections[i].write(output_path_injections + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
+        data[i].write(file_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
 
-        print('Injection {} generated successfully, running through Omicron...'.format(i+1))
-
-def pass_injection_through_omicron(number_of_injections, start_times, end_times, duration):
+def pass_injection_through_omicron(start_times, end_times, duration, file_path = './injections'):
 
     """
     injections: list of timeseries data with injected signal
@@ -203,12 +179,12 @@ def pass_injection_through_omicron(number_of_injections, start_times, end_times,
     frequency_all = []
     peak_time_all = []
 
-    for i in range(number_of_injections):
+    for i in range(int(len(start_times))):
 
         #Generating Cache file, points to the location of the injection
 
-        omicron_cache_file = open('./sim.lcf'.format(int(start_times[i]), duration), "w+")
-        omicron_cache_file.write('file://localhost' + cwd + '/injections' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
+        omicron_cache_file = open('./sim.lcf', "w+")
+        omicron_cache_file.write('file://localhost' + cwd + file_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_times[i]), duration))
         omicron_cache_file.close()
 
         # Run injection through Omicron
@@ -265,7 +241,6 @@ def pass_injection_through_omicron(number_of_injections, start_times, end_times,
         peak_time_all.append(peak_times)
 
     return peak_time_all, frequency_all, snr_all
-
 
 def check_omicron_threshold(snrs, start_times, injection_path):
 
@@ -366,19 +341,22 @@ minimum_frequency = 10
 
 cwd = os.getcwd()
 
-
 number_input = input('Enter number of injections to generate: ')
 
 timeseries_all, merger_times, start_times, end_times = get_gwosc_data(number_of_injections=number_input, sample_rate=sampling_frequency)
 
+save_to_gwf(data=timeseries_all, start_times=start_times, file_path= './ligo_data')
+
+peak_times, frequencies, snrs = pass_injection_through_omicron(start_times=start_times, end_times=end_times, duration=duration,file_path='./ligo_data')
+
 injections, metadatas = simulate_and_inject_waveforms(merger_times=merger_times, timeseries_dataset=timeseries_all)
 
-save_injections(injections=injections, start_times=start_times)
+save_to_gwf(data=injections, start_times=start_times, file_path= './injections')
 
 number_of_injections = int(len(injections))
 
-peak_times, frequencies, snrs = pass_injection_through_omicron(number_of_injections=number_of_injections, start_times=start_times, end_times=end_times, duration=duration)
+print('Injection generated successfully, running through Omicron...')
+
+peak_times, frequencies, snrs = pass_injection_through_omicron(start_times=start_times, end_times=end_times, duration=duration)
 
 check_omicron_threshold(snrs=snrs, start_times=start_times, injection_path='./injections')
-
-
