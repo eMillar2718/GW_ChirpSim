@@ -175,14 +175,14 @@ def parse_omicron_output(omicron_output):
 
     return peak_times, frequencies, snrs
 
-def check_omicron_threshold_strain(data, snrs, signal_current_path, duration = DURATION):
+def check_omicron_threshold_strain(data, snrs: list, signal_current_path:str, duration = DURATION):
 
     """
-    Moves successful injections into a /successful_injections folder and deletes the failed ones (minimum SNR of 7.5)
+    Sorts the strain data into clean strain and contaminated strain
 
     snrs: list of snr values from omicron
     start_times: omicron start times
-    injection_path: path to injections 
+    signal_current_path: path to signal 
 
     """
 
@@ -191,22 +191,25 @@ def check_omicron_threshold_strain(data, snrs, signal_current_path, duration = D
     if snrs:
 
         print('max SNR for signal is {}'.format(max(snrs)))
-    
+
+        if max(snrs) > 7.5:
+            print('peak SNR greater than 7.5, strain is contaminated')
+
+            os.mkdir('./contaminated_strain')
+            os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './contaminated_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
+
+        else:
+            print('peak SNR greater than 7.5, strain is contaminated')
+
+            os.mkdir('./contaminated_strain')
+            os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './contaminated_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
+
     else:
+        print('No triggers detected, strain is clean') 
 
-        print('No trigger file detected for injenction')
-
-
-    if max(snrs) > 7.5:
-        print('peak SNR greater than 7.5, strain is contaminated')
-
-        os.mkdir('./successful_injections')
-        os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './contaminated_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
-
-    else:
-        print('SNR less than 7.5, strain is clean')
+        os.mkdir('./clean_strain')
         os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './clean_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
-
+        
 def check_omicron_threshold_injection(data, snrs, signal_current_path, duration = DURATION):
 
     """
@@ -224,20 +227,20 @@ def check_omicron_threshold_injection(data, snrs, signal_current_path, duration 
 
         print('max SNR for signal is {}'.format(max(snrs)))
     
+
+        if max(snrs) > 7.5:
+            print('peak SNR greater than 7.5, injection accepted')
+
+            os.mkdir('./successful_injections')
+            os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './successsful_injections' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
+
+        else:
+            print('SNR less than 7.5, removing injection')
+            os.remove(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
+
     else:
 
-        print('No trigger file detected for injenction')
-
-
-    if max(snrs) > 7.5:
-        print('peak SNR greater than 7.5, injection accepted')
-
-        os.mkdir('./successful_injections')
-        os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './accepted_injections' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
-
-    else:
-        print('SNR less than 7.5, strain is clean')
-        os.remove(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
+        print('No triggers detected for injenction')
 
 time_series = get_gwosc_data()
 
