@@ -4,7 +4,8 @@ from gwpy.timeseries import TimeSeries
 import os
 import random
 import subprocess
-import shutil
+
+from gravityspy.plot.plot import plot_qtransform
 
 DURATION = 128
 
@@ -71,7 +72,7 @@ def save_to_gwf(data, output_path: str, duration: int = DURATION, file_tag: str 
     """
 
     if not os.path.exists(output_path):
-        os.mkdir(output_path)
+        os.makedirs(output_path, exist_ok = True)
         
     segment_start_time = data[1]
 
@@ -198,17 +199,25 @@ def check_omicron_threshold_strain(data, snrs: list, signal_current_path:str, du
             os.mkdir('./contaminated_strain')
             os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './contaminated_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
 
+            strain_status = 'contaminated'
+
         else:
             print('peak SNR greater than 7.5, strain is contaminated')
 
             os.mkdir('./contaminated_strain')
             os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './contaminated_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
 
+            strain_status = 'contaminated'
+
     else:
         print('No triggers detected, strain is clean') 
 
         os.mkdir('./clean_strain')
         os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './clean_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
+        
+        strain_status = 'clean'
+    
+    return strain_status
         
 def check_omicron_threshold_injection(data, snrs, signal_current_path, duration = DURATION):
 
@@ -230,17 +239,145 @@ def check_omicron_threshold_injection(data, snrs, signal_current_path, duration 
 
         if max(snrs) > 7.5:
             print('peak SNR greater than 7.5, injection accepted')
-
-            os.mkdir('./successful_injections')
-            os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './successsful_injections' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
+            injection_status = 'successful'
 
         else:
             print('SNR less than 7.5, removing injection')
             os.remove(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
 
+            injection_status = 'unsuccessful'
+
     else:
 
         print('No triggers detected for injenction')
+        injection_status = 'unsuccessful'
+
+    return injection_status
+
+def simulate_waveform(merger_time, minimum_frequency = 10, sampling_frequency = 16384, duration = DURATION, waveform_approximant = 'IMRPhenomPv2'):
+
+    """
+    Simulate waveform
+
+    merger_time: merger time from GWOSC timeseries data (data[3])
+    """
+        
+    mass_1_gen = np.random.randint(5,50)
+    mass_2_gen = np.random.randint(5,mass_1_gen)
+
+    injection_parameters = dict(
+        mass_1=mass_1_gen, 
+        mass_2=mass_2_gen,
+        a_1=0.4, # spin
+        a_2=0.3, # spin
+        tilt_1=0.5, # spin
+        tilt_2=1.0, # spin
+        phi_12=1.7, # spin
+        phi_jl=0.3, # spin
+        luminosity_distance=500., 
+        theta_jn=0.4, 
+        psi=2.659,
+        phase=1.3, 
+        geocent_time=merger_time,
+        ra=1.375, 
+        dec=-1.2108
+        )
+
+
+    #Printing masses for debugging 
+
+    mass1 = injection_parameters["mass_1"]
+    mass2 = injection_parameters["mass_2"]
+
+    print('Masses: M1 = {0}, M2 = {1}'.format(mass1,mass2))
+
+    #Setting up waveform generator
+
+    waveform_arguments = dict(
+        waveform_approximant=waveform_approximant,
+        reference_frequency=minimum_frequency,
+        minimum_frequency=minimum_frequency,
+        start_time=merger_time - 2
+    )
+
+    waveform_generator = bilby.gw.WaveformGenerator(
+        duration = duration,
+        sampling_frequency=sampling_frequency,
+        frequency_domain_source_model=bilby.gw.source.lal_binary_black_hole,
+        parameter_conversion=bilby.gw.conversion.convert_to_lal_binary_black_hole_parameters,
+        waveform_arguments=waveform_arguments,
+    )
+
+    return injection_parameters, waveform_generator
+
+def inject_waveform(data, injection_parameters, waveform_generator, detector = 'H1'): 
+
+    """
+    Inject simulated waveform into GWOSC timeseries 
+
+    data - list of timeseries data
+    data[0] = timeseries
+
+    """
+
+    injection_gen, metadata = bilby.gw.detector.inject_signal_into_gwpy_timeseries(data = data[0],
+        waveform_generator=waveform_generator, parameters=injection_parameters, det = detector
+    )
+
+    injection = [injection_gen, data[1], data[2], data[3]] #appending the timeseries list with start time, end time, and merger time from GWOSC dataset
+
+    return injection, metadata
+
+def generate_qscans(injection, start_time, merger_time, default_path = './plots'):    
+
+    injections = []
+    start_times = []
+    merger_times = []
+
+    injections.append(injection)  #This is purely for bebugging purpose, redo later
+    start_times.append(start_time)
+    merger_times.append(merger_time)
+
+    print('Generating Q-Scans...')
+
+    durations = [0.5, 1, 2, 4]
+    plot_normalized_energy_range = (0,25)
+    plot_time_ranges = durations
+    detector_name = 'H1'
+
+    qspecgrams = {}
+    ind_figs_all = {}
+    superfigs = []
+
+    for i in range(len(injections)):
+        
+        qspecgram_durations = []
+        for j in range(len(durations)):
+
+            print('Plot {} Generated'.format(j+1))
+            
+            qspecgram = injections[i].q_transform(frange = [10,2048], outseg=(merger_times[i] - durations[j]/2, merger_times[i] + durations[j]/2),tres=0.002, fres = 0.5, whiten=True, qrange = [4,64], gps = merger_times[i])
+
+            qspecgram_durations.append(qspecgram)
+            
+        qspecgrams["injection {0}".format(i+1)] = qspecgram_durations
+
+        ind_fig_all, superfig = plot_qtransform(qspecgrams["injection {}".format(i+1)], plot_normalized_energy_range, plot_time_ranges, detector_name, start_times[i])
+
+        ind_figs_all["injection {0}".format(i+1)] = ind_fig_all
+        superfigs.append(superfig)
+
+
+        if not os.path.exists(default_path):
+            os.mkdir(default_path)
+
+    for i in range(len(injections)):
+
+        for j in range(len(durations)):
+
+            ind_figs_all["injection {0}".format(i+1)][j].savefig(default_path + '/qscan{0}-{1}-{2}s.jpg'.format(i+1, merger_times[i], durations[j]))
+
+    print('Q-scans generated successfully, saved to {0}'.format(default_path))
 
 time_series = get_gwosc_data()
 
@@ -250,8 +387,28 @@ cwd = os.getcwd()
 
 generate_omicron_cache_files(data=time_series, data_absolute_path= cwd + '/gwosc_data')
 
-omicron_output = pass_through_omicron(data=time_series)
+omicron_output_strain = pass_through_omicron(data=time_series)
 
-peak_times, frequencies, snrs = parse_omicron_output(omicron_output=omicron_output)
+_, _, snrs_strain = parse_omicron_output(omicron_output=omicron_output_strain)
 
-check_omicron_threshold_strain(data = time_series, snrs = snrs, signal_current_path='./gwosc_data')
+strain_status = check_omicron_threshold_strain(data = time_series, snrs = snrs_strain, signal_current_path='./gwosc_data')
+
+injection_parameters, waveform_generator = simulate_waveform(time_series[3])
+
+injection, metadata = inject_waveform(time_series, injection_parameters=injection_parameters, waveform_generator=waveform_generator)
+
+save_to_gwf(data=injection, output_path='./injections/' + strain_status)
+
+generate_omicron_cache_files(data= injection, data_absolute_path= cwd + '/injections/' + strain_status)
+
+omicron_output_injection = pass_through_omicron(injection)
+
+_, _, snrs_injection = parse_omicron_output(omicron_output=omicron_output_injection)
+
+injection_status = check_omicron_threshold_injection(data=injection, snrs=snrs_injection, signal_current_path= './injections/' + strain_status)
+
+if injection_status == "successful":
+
+    generate_qscans(injection=injection[0], start_time= injection[1], merger_time= injection[3], default_path= './plots/' + strain_status)
+
+# Strains which are labelled "contaminated" may happen many seconds before or after merger as the omicron chunk is 128s, find a way to account for that 
