@@ -400,33 +400,37 @@ def generate_qscans(injection, start_time, merger_time, default_path = './plots'
 
     print('Q-scans generated successfully, saved to {0}'.format(default_path))
 
-time_series = get_gwosc_data()
+injection_status = "unsuccessful"
 
-save_to_gwf(data=time_series, output_path='./gwosc_data')
+while injection_status != "successful":
 
-cwd = os.getcwd()
+    time_series = get_gwosc_data()
 
-generate_omicron_cache_files(data=time_series, data_absolute_path= cwd + '/gwosc_data')
+    save_to_gwf(data=time_series, output_path='./gwosc_data')
 
-omicron_output_strain = pass_through_omicron(data=time_series)
+    cwd = os.getcwd()
 
-peak_times_strain, _, snrs_strain = parse_omicron_output(omicron_output=omicron_output_strain)
+    generate_omicron_cache_files(data=time_series, data_absolute_path= cwd + '/gwosc_data')
 
-strain_status = check_omicron_threshold_strain(data = time_series, snrs = snrs_strain, peak_times= peak_times_strain, signal_current_path='./gwosc_data')
+    omicron_output_strain = pass_through_omicron(data=time_series)
 
-injection_parameters, waveform_generator = simulate_waveform(time_series[3])
+    peak_times_strain, _, snrs_strain = parse_omicron_output(omicron_output=omicron_output_strain)
 
-injection, metadata = inject_waveform(time_series, injection_parameters=injection_parameters, waveform_generator=waveform_generator)
+    strain_status = check_omicron_threshold_strain(data = time_series, snrs = snrs_strain, peak_times= peak_times_strain, signal_current_path='./gwosc_data')
 
-save_to_gwf(data=injection, output_path='./injections/' + strain_status)
+    injection_parameters, waveform_generator = simulate_waveform(time_series[3])
 
-generate_omicron_cache_files(data= injection, data_absolute_path= cwd + '/injections/' + strain_status)
+    injection, metadata = inject_waveform(time_series, injection_parameters=injection_parameters, waveform_generator=waveform_generator)
 
-omicron_output_injection = pass_through_omicron(injection)
+    save_to_gwf(data=injection, output_path='./injections/' + strain_status)
 
-peak_times_injection, _, snrs_injection = parse_omicron_output(omicron_output=omicron_output_injection)
+    generate_omicron_cache_files(data= injection, data_absolute_path= cwd + '/injections/' + strain_status)
 
-injection_status = check_omicron_threshold_injection(data=injection, snrs=snrs_injection, peak_times=peak_times_injection, signal_current_path= './injections/' + strain_status)
+    omicron_output_injection = pass_through_omicron(injection)
+
+    peak_times_injection, _, snrs_injection = parse_omicron_output(omicron_output=omicron_output_injection)
+
+    injection_status = check_omicron_threshold_injection(data=injection, snrs=snrs_injection, peak_times=peak_times_injection, signal_current_path= './injections/' + strain_status)
 
 if injection_status == "successful":
 
