@@ -203,7 +203,9 @@ def check_omicron_threshold_strain(data, snrs: list, peak_times: list, signal_cu
         if max(snrs) > 7.5 and np.abs(corresponding_time-merger_time) < 4: #if there's a high SNR value within 4s of the merger
             print('peak SNR greater than 7.5 detected near merger, strain is contaminated')
 
-            os.mkdir('./contaminated_strain')
+            if not os.path.exists('./contaminated_strain'):
+                os.mkdir('./contaminated_strain')
+
             os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './contaminated_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
 
             strain_status = 'contaminated'
@@ -211,7 +213,9 @@ def check_omicron_threshold_strain(data, snrs: list, peak_times: list, signal_cu
         else:
             print('peak SNR near merger less than 7.5, strain is clean')
 
-            os.mkdir('./clean_strain')
+            if not os.path.exists('./clean_strain'):
+                os.mkdir('./clean_strain')
+
             os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './clean_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
 
             strain_status = 'clean'
@@ -219,14 +223,15 @@ def check_omicron_threshold_strain(data, snrs: list, peak_times: list, signal_cu
     else:
         print('No triggers detected, strain is clean') 
 
-        os.mkdir('./clean_strain')
+        if not os.path.exists('./clean_strain'):
+                os.mkdir('./clean_strain')
         os.rename(signal_current_path + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration), './clean_strain' + '/H-H1_SIM-{0}-{1}.gwf'.format(int(start_time), duration))
         
         strain_status = 'clean'
     
     return strain_status
         
-def check_omicron_threshold_injection(data, snrs, signal_current_path, duration = DURATION):
+def check_omicron_threshold_injection(data, snrs, peak_times, signal_current_path, duration = DURATION):
 
     """
     Moves successful injections into a /successful_injections folder and deletes the failed ones (minimum SNR of 7.5)
@@ -238,13 +243,22 @@ def check_omicron_threshold_injection(data, snrs, signal_current_path, duration 
     """
 
     start_time = data[1]
+    merger = data[3]
 
     if snrs:
 
         print('max SNR for signal is {}'.format(max(snrs)))
-    
 
-        if max(snrs) > 7.5:
+        trigger_check_all = []
+
+        for i in range(len(snrs)):
+
+            if np.abs(peak_times[i] - merger) < 2 and snrs[i] > 7.5:
+                trigger_check = 'pass'
+                trigger_check_all.append(trigger_check)
+
+
+        if 'pass' in trigger_check_all:
             print('peak SNR greater than 7.5, injection accepted')
             injection_status = 'successful'
 
@@ -382,7 +396,7 @@ def generate_qscans(injection, start_time, merger_time, default_path = './plots'
 
         for j in range(len(durations)):
 
-            ind_figs_all["injection {0}".format(i+1)][j].savefig(default_path + '/qscan{0}-{1}-{2}s.jpg'.format(i+1, merger_times[i], durations[j]))
+            ind_figs_all["injection {0}".format(i+1)][j].savefig(default_path + '/qscan-{0}-{1}s.jpg'.format(merger_times[i], durations[j]))
 
     print('Q-scans generated successfully, saved to {0}'.format(default_path))
 
@@ -410,10 +424,14 @@ generate_omicron_cache_files(data= injection, data_absolute_path= cwd + '/inject
 
 omicron_output_injection = pass_through_omicron(injection)
 
-_, _, snrs_injection = parse_omicron_output(omicron_output=omicron_output_injection)
+peak_times_injection, _, snrs_injection = parse_omicron_output(omicron_output=omicron_output_injection)
 
-injection_status = check_omicron_threshold_injection(data=injection, snrs=snrs_injection, signal_current_path= './injections/' + strain_status)
+injection_status = check_omicron_threshold_injection(data=injection, snrs=snrs_injection, peak_times=peak_times_injection, signal_current_path= './injections/' + strain_status)
 
 if injection_status == "successful":
 
     generate_qscans(injection=injection[0], start_time= injection[1], merger_time= injection[3], default_path= './plots/' + strain_status)
+
+else:
+
+    print("injection unsuccessful, please retry")
