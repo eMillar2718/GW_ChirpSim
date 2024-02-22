@@ -1,0 +1,10 @@
+/data/wiay/2297403c/conda_envs/GWTC-3-population/lib/python3.9/site-packages/gwpopulation/models/mass.py:552: RuntimeWarning: divide by zero encountered in true_divide
+  delta_m / shifted_mass + delta_m / (shifted_mass - delta_m)
+/data/wiay/2297403c/conda_envs/GWTC-3-population/lib/python3.9/site-packages/gwpopulation/models/mass.py:554: RuntimeWarning: overflow encountered in exp
+  window[smoothing_region] = 1 / (xp.exp(exponent) + 1)
+/data/wiay/2297403c/conda_envs/GWTC-3-population/lib/python3.9/site-packages/gwpopulation/utils.py:38: RuntimeWarning: divide by zero encountered in log
+  ln_beta = (alpha - 1) * xp.log(xx) + (beta - 1) * xp.log(scale - xx)
+/data/wiay/2297403c/conda_envs/GWTC-3-population/lib/python3.9/site-packages/gwpopulation/utils.py:77: RuntimeWarning: divide by zero encountered in power
+  prob = xp.power(xx, alpha)
+/data/wiay/2297403c/conda_envs/GWTC-3-population/lib/python3.9/site-packages/gwpopulation/utils.py:79: RuntimeWarning: invalid value encountered in multiply
+  prob *= (xx <= high) & (xx >= low)

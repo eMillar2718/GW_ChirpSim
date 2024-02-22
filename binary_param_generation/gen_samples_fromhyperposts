@@ -1,0 +1,28 @@
+import intrinsic_params
+from bilby.core.result import read_in_result
+from scipy.interpolate import interp1d
+import numpy as np
+import deepdish as dd
+import matplotlib.pyplot as plt
+import pandas as pd
+
+PP_path = '../GWTC-3-population-data/analyses/PowerLawPeak/o1o2o3_mass_c_iid_mag_iid_tilt_powerlaw_redshift_result.json'
+PP_result = read_in_result(PP_path)
+
+PP_hyperposterior_samples = PP_result.posterior.copy() # making a copy is best practice here so you don't accidentally modify things in-place
+PP_hyperposterior_samples
+
+#Generating no_samps from all hyperposterior samples
+
+no_samps=3
+total_hyperpost_samps = PP_hyperposterior_samples.shape[0]
+all_intrins_samps = []
+
+for idx, hyperpostsamp in PP_hyperposterior_samples.iterrows():
+    sample = intrinsic_params.sample_intrinsic(hyperpostsamp, no_samps)
+    all_intrins_samps.append(sample)
+
+comb_intrins_samps = np.reshape(np.array(all_intrins_samps), (total_hyperpost_samps*no_samps, 7))
+
+params = ['m1', 'q', 'z', 'chi_1', 'chi_2','costilt_1','costilt_2']
+pd.DataFrame(np.array(comb_intrins_samps), columns=params).to_hdf('all_intrins_samps.hdf5', key='all_intrins_samps')
