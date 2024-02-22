@@ -191,32 +191,33 @@ def sample_1D(distr, theta, N):
 
 def sample_intrinsic(hyperpost_samp, N):
 
-    sample = {'m1':0, 'q':0, 'z':0, 'chi_1':0, 'chi_2':0, 'costilt_1':0, 'costilt_2':0}
+    sample = np.zeros((N,7))#{'m1':0, 'q':0, 'z':0, 'chi_1':0, 'chi_2':0, 'costilt_1':0, 'costilt_2':0}
 
     #mass model
     p_m1, masses = get_p_m1(hyperpost_samp)
-    sample['m1'] = sample_1D(p_m1, masses, N)
+    sample[:,0] = sample_1D(p_m1, masses, N)
 
 
     #mass ratio
-    for m1 in sample['m1']:
+    for m1 in sample[:,0]:
         p_q, qs = get_p_q(np.array([m1]), hyperpost_samp)
         q = sample_1D(p_q, qs, N)
-    sample['q'] = q
+    sample[:,1] = q
 
     #redshift
     p_z, zs = get_p_z(hyperpost_samp)
-    sample['z'] = sample_1D(p_z, zs, N)
+    sample[:,2] = sample_1D(p_z, zs, N)
 
     #spin magnitudes
-    #should chi_1 and chi_2 be sampled from different spin populations or the same population?
+    #chi_1 and chi_2 sampled the same spin population
     p_chi, chis = get_p_chi(hyperpost_samp)
-    sample['chi_1'] = sample_1D(p_chi, chis, N)
+    sample[:,3] = sample_1D(p_chi, chis, N)
+    sample[:,4] = sample_1D(p_chi, chis, N)
 
     #spin tilts
-    #should chi_1 and chi_2 be sampled from different spin populations or the same population?
     p_costilt, costilts = get_p_costilt(hyperpost_samp)
-    sample['costilt_1'] = sample_1D(p_costilt, costilts, N)
+    sample[:,5] = sample_1D(p_costilt, costilts, N)
+    sample[:,6] = sample_1D(p_costilt, costilts, N)
 
     return sample
 
