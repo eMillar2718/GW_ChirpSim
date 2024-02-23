@@ -6,6 +6,7 @@ from gwpy.timeseries import TimeSeries
 import os
 import random
 import subprocess
+import pandas as pd
 
 from gravityspy.plot.plot import plot_qtransform
 
@@ -275,42 +276,36 @@ def check_omicron_threshold_injection(data, snrs, peak_times, signal_current_pat
 
     return injection_status
 
-def simulate_waveform(merger_time, minimum_frequency = 10, sampling_frequency = 16384, duration = DURATION, waveform_approximant = 'IMRPhenomPv2'):
+def simulate_waveform(merger_time,population_distribution: str, minimum_frequency = 10, sampling_frequency = 16384, duration = DURATION, waveform_approximant = 'IMRPhenomPv2'):
 
     """
     Simulate waveform
 
     merger_time: merger time from GWOSC timeseries data (data[3])
     """
-        
-    mass_1_gen = np.random.randint(5,50)
-    mass_2_gen = np.random.randint(5,mass_1_gen)
+    df_population = pd.read_hdf(population_distribution)
+    rand_int = np.random.randint(0,len(df_population))
+    
+    population_selection = df_population.loc[rand_int]
+
 
     injection_parameters = dict(
-        mass_1=mass_1_gen, 
-        mass_2=mass_2_gen,
-        a_1=0.4, # spin
-        a_2=0.3, # spin
-        tilt_1=0.5, # spin
-        tilt_2=1.0, # spin
-        phi_12=1.7, # spin
-        phi_jl=0.3, # spin
-        luminosity_distance=500., 
-        theta_jn=0.4, 
-        psi=2.659,
-        phase=1.3, 
-        geocent_time=merger_time,
-        ra=1.375, 
-        dec=-1.2108
+        mass_1 = population_selection["m1"], 
+        mass_2 = population_selection["m2"],
+        a_1 = population_selection["chi_1"], # spin
+        a_2 = population_selection["chi_2"], # spin
+        tilt_1 = population_selection["costilt_1"], # spin
+        tilt_2 = population_selection["costilt_2"], # spin
+        phi_12 = population_selection["phi_12"], # spin
+        phi_jl = population_selection["phi_jl"], # spin
+        luminosity_distance = population_selection["luminosity_distance"], 
+        theta_jn = population_selection["theta_jn"], 
+        psi = population_selection["psi"],
+        phase = population_selection["phase"], 
+        geocent_time = merger_time,
+        ra = population_selection["ra"], 
+        dec = population_selection["dec"]
         )
-
-
-    #Printing masses for debugging 
-
-    mass1 = injection_parameters["mass_1"]
-    mass2 = injection_parameters["mass_2"]
-
-    print('Masses: M1 = {0}, M2 = {1}'.format(mass1,mass2))
 
     #Setting up waveform generator
 
@@ -402,6 +397,8 @@ def generate_qscans(injection, start_time, merger_time, default_path = './plots'
 
 injection_status = "unsuccessful"
 
+
+
 while injection_status != "successful":
 
     time_series = get_gwosc_data()
@@ -418,7 +415,7 @@ while injection_status != "successful":
 
     strain_status = check_omicron_threshold_strain(data = time_series, snrs = snrs_strain, peak_times= peak_times_strain, signal_current_path='./gwosc_data')
 
-    injection_parameters, waveform_generator = simulate_waveform(time_series[3])
+    injection_parameters, waveform_generator = simulate_waveform(time_series[3], population_distribution='./full_population_samples.hdf5')
 
     injection, metadata = inject_waveform(time_series, injection_parameters=injection_parameters, waveform_generator=waveform_generator)
 
