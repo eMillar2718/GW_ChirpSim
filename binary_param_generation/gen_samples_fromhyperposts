@@ -25,4 +25,4 @@ for idx, hyperpostsamp in PP_hyperposterior_samples.iterrows():
 comb_intrins_samps = np.reshape(np.array(all_intrins_samps), (total_hyperpost_samps*no_samps, 7))
 
 params = ['m1', 'q', 'z', 'chi_1', 'chi_2','costilt_1','costilt_2']
-pd.DataFrame(np.array(comb_intrins_samps), columns=params).to_hdf('all_intrins_samps.hdf5', key='all_intrins_samps')
+pd.DataFrame(np.array(comb_intrins_samps), columns=params).to_hdf('all_intrins_samps_zmax1_35.hdf5', key='all_intrins_samps')

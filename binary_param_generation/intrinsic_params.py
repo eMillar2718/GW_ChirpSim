@@ -1,6 +1,8 @@
 import gwpopulation
 import numpy as np
 
+_z_max=1.35
+
 def get_p_m1(hyperpost_samp, n=1000):
     """
     Returns gwpopulation.models.mass.SinglePeakSmoothedMassDistribution from array of masses and mass ratios, with hyperposterior sample in 
@@ -95,7 +97,7 @@ def get_p_z(hyperpost_samp, n=1000):
     """
 
     lamb = hyperpost_samp['lamb']
-    z= np.linspace(0.,2.3,n)
+    z= np.linspace(0.,_z_max,n)
     param_dict = {'redshift':z}
 
     z_model = gwpopulation.models.redshift.PowerLawRedshift()
