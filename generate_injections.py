@@ -276,7 +276,7 @@ def check_omicron_threshold_injection(data, snrs, peak_times, signal_current_pat
 
     return injection_status
 
-def simulate_waveform(merger_time,population_distribution: str, minimum_frequency = 10, sampling_frequency = 16384, duration = DURATION, waveform_approximant = 'IMRPhenomPv2'):
+def simulate_waveform(merger_time,population_distribution: str, population_number, minimum_frequency = 10, sampling_frequency = 16384, duration = DURATION, waveform_approximant = 'IMRPhenomPv2'):
 
     """
     Simulate waveform
@@ -284,9 +284,9 @@ def simulate_waveform(merger_time,population_distribution: str, minimum_frequenc
     merger_time: merger time from GWOSC timeseries data (data[3])
     """
     df_population = pd.read_hdf(population_distribution)
-    rand_int = np.random.randint(0,len(df_population))
+    #rand_int = np.random.randint(0,len(df_population))
     
-    population_selection = df_population.loc[rand_int]
+    population_selection = df_population.loc[population_number]
 
 
     injection_parameters = dict(
@@ -395,11 +395,7 @@ def generate_qscans(injection, start_time, merger_time, default_path = './plots'
 
     print('Q-scans generated successfully, saved to {0}'.format(default_path))
 
-injection_status = "unsuccessful"
-
-
-
-while injection_status != "successful":
+for i in range(105):
 
     time_series = get_gwosc_data()
 
@@ -415,9 +411,12 @@ while injection_status != "successful":
 
     strain_status = check_omicron_threshold_strain(data = time_series, snrs = snrs_strain, peak_times= peak_times_strain, signal_current_path='./gwosc_data')
 
-    injection_parameters, waveform_generator = simulate_waveform(time_series[3], population_distribution='./full_population_samples.hdf5')
+    injection_parameters, waveform_generator = simulate_waveform(time_series[3], population_number=i, population_distribution='./full_population_samples.hdf5')
 
     injection, metadata = inject_waveform(time_series, injection_parameters=injection_parameters, waveform_generator=waveform_generator)
+
+    if metadata["optimal_SNR"] < 10:
+        continue
 
     save_to_gwf(data=injection, output_path='./injections/' + strain_status)
 
@@ -429,10 +428,10 @@ while injection_status != "successful":
 
     injection_status = check_omicron_threshold_injection(data=injection, snrs=snrs_injection, peak_times=peak_times_injection, signal_current_path= './injections/' + strain_status)
 
-if injection_status == "successful":
+    if injection_status == "successful":
 
-    generate_qscans(injection=injection[0], start_time= injection[1], merger_time= injection[3], default_path= './plots/' + strain_status)
+        generate_qscans(injection=injection[0], start_time= injection[1], merger_time= injection[3], default_path= './plots/' + strain_status)
 
-else:
+    else:
 
-    print("injection unsuccessful, please retry")
+        print("injection unsuccessful, moving to next injection")
