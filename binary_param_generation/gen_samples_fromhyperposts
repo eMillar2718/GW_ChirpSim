@@ -14,7 +14,7 @@ PP_hyperposterior_samples
 
 #Generating no_samps from all hyperposterior samples
 
-no_samps=3
+no_samps=30
 total_hyperpost_samps = PP_hyperposterior_samples.shape[0]
 all_intrins_samps = []
 
@@ -25,4 +25,4 @@ for idx, hyperpostsamp in PP_hyperposterior_samples.iterrows():
 comb_intrins_samps = np.reshape(np.array(all_intrins_samps), (total_hyperpost_samps*no_samps, 7))
 
 params = ['m1', 'q', 'z', 'chi_1', 'chi_2','costilt_1','costilt_2']
-pd.DataFrame(np.array(comb_intrins_samps), columns=params).to_hdf('all_intrins_samps_zmax1_35.hdf5', key='all_intrins_samps')
+pd.DataFrame(np.array(comb_intrins_samps), columns=params).to_hdf('30_intrins_samps_zmax1_35.hdf5', key='all_intrins_samps')

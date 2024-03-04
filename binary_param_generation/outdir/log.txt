@@ -106,3 +106,147 @@
 
 	Job terminated of its own accord at 2024-02-28T12:41:45Z with exit-code 0.
 ...
+000 (119107.000.000) 2024-02-29 14:21:36 Job submitted from host: <130.209.45.81:9618?addrs=130.209.45.81-9618&alias=wiay.astro.gla.ac.uk&noUDP&sock=schedd_7258_f678>
+...
+001 (119107.000.000) 2024-02-29 14:21:37 Job executing on host: <130.209.45.226:9618?addrs=130.209.45.226-9618&alias=muck.physics.gla.ac.uk&noUDP&sock=startd_1061008_d0cc>
+...
+006 (119107.000.000) 2024-02-29 14:21:45 Image size of job updated: 134596
+	132  -  MemoryUsage of job (MB)
+	134596  -  ResidentSetSize of job (KB)
+...
+006 (119107.000.000) 2024-02-29 14:26:45 Image size of job updated: 235072
+	230  -  MemoryUsage of job (MB)
+	235072  -  ResidentSetSize of job (KB)
+...
+006 (119107.000.000) 2024-02-29 14:31:45 Image size of job updated: 236096
+	231  -  MemoryUsage of job (MB)
+	236008  -  ResidentSetSize of job (KB)
+...
+006 (119107.000.000) 2024-02-29 14:36:46 Image size of job updated: 236136
+	231  -  MemoryUsage of job (MB)
+	236136  -  ResidentSetSize of job (KB)
+...
+006 (119107.000.000) 2024-02-29 14:41:46 Image size of job updated: 237508
+	232  -  MemoryUsage of job (MB)
+	237416  -  ResidentSetSize of job (KB)
+...
+006 (119107.000.000) 2024-02-29 14:46:46 Image size of job updated: 237576
+	232  -  MemoryUsage of job (MB)
+	237460  -  ResidentSetSize of job (KB)
+...
+006 (119107.000.000) 2024-02-29 14:56:48 Image size of job updated: 238360
+	233  -  MemoryUsage of job (MB)
+	238360  -  ResidentSetSize of job (KB)
+...
+006 (119107.000.000) 2024-02-29 15:01:13 Image size of job updated: 241560
+	233  -  MemoryUsage of job (MB)
+	238360  -  ResidentSetSize of job (KB)
+...
+005 (119107.000.000) 2024-02-29 15:01:13 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:39:13, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:39:13, Sys 0 00:00:00  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     1.00        1         1 
+	   Disk (KB)            :     1     4194304   5025498 
+	   GPUs                 :                           0 
+	   Memory (MB)          :   233        2048      2048 
+
+	Job terminated of its own accord at 2024-02-29T15:01:13Z with exit-code 0.
+...
+000 (119133.000.000) 2024-03-01 16:14:09 Job submitted from host: <130.209.45.81:9618?addrs=130.209.45.81-9618&alias=wiay.astro.gla.ac.uk&noUDP&sock=schedd_7258_f678>
+...
+001 (119133.000.000) 2024-03-01 16:14:09 Job executing on host: <130.209.45.226:9618?addrs=130.209.45.226-9618&alias=muck.physics.gla.ac.uk&noUDP&sock=startd_1061008_d0cc>
+...
+006 (119133.000.000) 2024-03-01 16:14:18 Image size of job updated: 151296
+	148  -  MemoryUsage of job (MB)
+	151292  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 16:19:19 Image size of job updated: 152476
+	149  -  MemoryUsage of job (MB)
+	152476  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 16:34:21 Image size of job updated: 155424
+	152  -  MemoryUsage of job (MB)
+	155424  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 17:49:28 Image size of job updated: 156472
+	153  -  MemoryUsage of job (MB)
+	156372  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 18:09:30 Image size of job updated: 163196
+	160  -  MemoryUsage of job (MB)
+	163144  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 19:54:42 Image size of job updated: 163284
+	160  -  MemoryUsage of job (MB)
+	163284  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 19:59:42 Image size of job updated: 163296
+	160  -  MemoryUsage of job (MB)
+	163284  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 20:04:44 Image size of job updated: 163300
+	160  -  MemoryUsage of job (MB)
+	163284  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 20:09:44 Image size of job updated: 163312
+	160  -  MemoryUsage of job (MB)
+	163312  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 20:14:44 Image size of job updated: 163440
+	160  -  MemoryUsage of job (MB)
+	163440  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 20:29:46 Image size of job updated: 164256
+	161  -  MemoryUsage of job (MB)
+	164256  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 20:49:47 Image size of job updated: 168552
+	165  -  MemoryUsage of job (MB)
+	168528  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 21:44:52 Image size of job updated: 168656
+	165  -  MemoryUsage of job (MB)
+	168656  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 21:54:53 Image size of job updated: 169680
+	166  -  MemoryUsage of job (MB)
+	169668  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 22:09:55 Image size of job updated: 171076
+	167  -  MemoryUsage of job (MB)
+	170984  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 22:29:57 Image size of job updated: 173928
+	170  -  MemoryUsage of job (MB)
+	173928  -  ResidentSetSize of job (KB)
+...
+006 (119133.000.000) 2024-03-01 23:21:59 Image size of job updated: 232024
+	170  -  MemoryUsage of job (MB)
+	173928  -  ResidentSetSize of job (KB)
+...
+005 (119133.000.000) 2024-03-01 23:21:59 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 07:07:44, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 07:07:44, Sys 0 00:00:00  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :     1.00        1         1 
+	   Disk (KB)            :     1     4194304   5025498 
+	   GPUs                 :                           0 
+	   Memory (MB)          :   170        2048      2048 
+
+	Job terminated of its own accord at 2024-03-01T23:21:59Z with exit-code 0.
+...
