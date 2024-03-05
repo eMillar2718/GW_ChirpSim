@@ -344,7 +344,7 @@ def inject_waveform(data, injection_parameters, waveform_generator, detector = '
 
     return injection, metadata
 
-def generate_qscans(injection, start_time, merger_time, default_path = './plots'):    
+def generate_qscans(injection, start_time, merger_time, default_path = '/home/ethan.millar/code/omicron/plots'):    
 
     injections = []
     start_times = []
@@ -395,43 +395,54 @@ def generate_qscans(injection, start_time, merger_time, default_path = './plots'
 
     print('Q-scans generated successfully, saved to {0}'.format(default_path))
 
+accepted_snrs = []
+
 for i in range(105):
 
     time_series = get_gwosc_data()
 
-    save_to_gwf(data=time_series, output_path='./gwosc_data')
+    save_to_gwf(data=time_series, output_path='/home/ethan.millar/code/omicron/gwosc_data')
 
     cwd = os.getcwd()
 
-    generate_omicron_cache_files(data=time_series, data_absolute_path= cwd + '/gwosc_data')
+    generate_omicron_cache_files(data=time_series, data_absolute_path= '/home/ethan.millar/code/omicron/gwosc_data')
 
     omicron_output_strain = pass_through_omicron(data=time_series)
 
     peak_times_strain, _, snrs_strain = parse_omicron_output(omicron_output=omicron_output_strain)
 
-    strain_status = check_omicron_threshold_strain(data = time_series, snrs = snrs_strain, peak_times= peak_times_strain, signal_current_path='./gwosc_data')
+    strain_status = check_omicron_threshold_strain(data = time_series, snrs = snrs_strain, peak_times= peak_times_strain, signal_current_path='/home/ethan.millar/code/omicron/gwosc_data')
 
-    injection_parameters, waveform_generator = simulate_waveform(time_series[3], population_number=i, population_distribution='./full_population_samples.hdf5')
+    injection_parameters, waveform_generator = simulate_waveform(time_series[3], population_number=i, population_distribution='/home/ethan.millar/code/omicron/full_population_samples.hdf5')
 
     injection, metadata = inject_waveform(time_series, injection_parameters=injection_parameters, waveform_generator=waveform_generator)
 
     if metadata["optimal_SNR"] < 10:
         continue
 
-    save_to_gwf(data=injection, output_path='./injections/' + strain_status)
+    save_to_gwf(data=injection, output_path='/home/ethan.millar/code/omicron/injections/' + strain_status)
 
-    generate_omicron_cache_files(data= injection, data_absolute_path= cwd + '/injections/' + strain_status)
+    generate_omicron_cache_files(data= injection, data_absolute_path= '/home/ethan.millar/code/omicron/injections/' + strain_status)
 
     omicron_output_injection = pass_through_omicron(injection)
 
     peak_times_injection, _, snrs_injection = parse_omicron_output(omicron_output=omicron_output_injection)
 
-    injection_status = check_omicron_threshold_injection(data=injection, snrs=snrs_injection, peak_times=peak_times_injection, signal_current_path= './injections/' + strain_status)
+    injection_status = check_omicron_threshold_injection(data=injection, snrs=snrs_injection, peak_times=peak_times_injection, signal_current_path= '/home/ethan.millar/code/omicron/injections/' + strain_status)
 
     if injection_status == "successful":
 
-        generate_qscans(injection=injection[0], start_time= injection[1], merger_time= injection[3], default_path= './plots/' + strain_status)
+        generate_qscans(injection=injection[0], start_time= injection[1], merger_time= injection[3], default_path= '/home/ethan.millar/code/omicron/plots/' + strain_status)
+
+        accepted_snrs.append(metadata["optimal_SNR"])
 
     else:
 
         print("injection unsuccessful, moving to next injection")
+
+    
+
+with open('snrs.txt', 'w') as file:
+
+    for snr in accepted_snrs:
+        file.write(str(snr) + '\n')
